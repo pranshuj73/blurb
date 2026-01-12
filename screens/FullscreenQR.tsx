@@ -290,12 +290,11 @@ const styles = StyleSheet.create({
   titleSection: {
     flex: 1,
     alignItems: 'flex-start',
-    gap: 4,
+    gap: 6,
   },
   headingText: {
     lineHeight: 40,
     letterSpacing: 4,
-    marginLeft: -6,
   },
   qrWrapper: {
     alignItems: 'center',

@@ -47,7 +47,11 @@ export function EntriesList() {
   useFocusEffect(
     useCallback(() => {
       loadEntries();
-    }, [loadEntries])
+      // Reset gesture state when screen comes into focus
+      pullDistance.value = 0;
+      isPulling.value = false;
+      setScrollOffset(0);
+    }, [loadEntries, pullDistance, isPulling])
   );
 
   const handleEntryPress = useCallback(
@@ -134,13 +138,16 @@ export function EntriesList() {
 
 
   const pullGesture = Gesture.Pan()
-    .activeOffsetY(25)
-    .failOffsetX([-10, 10])
-    .minDistance(20)
+    .activeOffsetY(30)
+    .failOffsetX([-15, 15])
+    .minDistance(25)
     .maxPointers(1)
     .onStart(() => {
       if (scrollOffset <= 0) {
         isPulling.value = true;
+      } else {
+        // Fail the gesture immediately if not at top
+        return;
       }
     })
     .onChange((event) => {
@@ -264,6 +271,8 @@ export function EntriesList() {
             setScrollOffset(event.nativeEvent.contentOffset.y);
           }}
           scrollEventThrottle={16}
+          bounces={true}
+          bouncesZoom={false}
         />
       </GestureDetector>
     </View>

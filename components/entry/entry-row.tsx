@@ -18,6 +18,7 @@ export function EntryRow({ entry, onPress, onLongPress }: EntryRowProps) {
       onPress={onPress}
       onLongPress={onLongPress}
       activeOpacity={0.8}
+      delayPressIn={0}
     >
       <View style={styles.card}>
         <View style={styles.iconContainer}>
