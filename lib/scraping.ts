@@ -19,27 +19,7 @@ function normalizeUrl(url: string): string {
 }
 
 export async function scrapeMetadata(url: string): Promise<ScrapedMetadata> {
-  // Try LinkPreview if available - wrap everything in try-catch to be safe
-  try {
-    // Dynamic import to avoid errors if module isn't available
-    const LinkPreviewModule = await import('@lowkey/react-native-link-preview');
-    const LinkPreview = LinkPreviewModule.default || LinkPreviewModule;
-    
-    if (LinkPreview && LinkPreview.generate && typeof LinkPreview.generate === 'function') {
-      const metadata = await LinkPreview.generate(normalizeUrl(url));
-      
-      return {
-        title: metadata.title || 'Website',
-        subtitle: metadata.description,
-        iconUrl: metadata.imageURL,
-      };
-    }
-  } catch (error) {
-    // LinkPreview not available or failed - use fallback
-    // This is expected in Expo Go
-  }
-  
-  // Fallback: extract domain for title and get favicon
+  // Extract domain for title and get favicon
   try {
     const urlObj = new URL(normalizeUrl(url));
     const domain = urlObj.hostname.replace('www.', '');
