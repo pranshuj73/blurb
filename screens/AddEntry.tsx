@@ -9,7 +9,18 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Dimensions,
 } from 'react-native';
+import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  runOnJS,
+  interpolate,
+  Extrapolation,
+} from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
@@ -18,10 +29,18 @@ import { scrapeMetadata } from '@/lib/scraping';
 import { BlurbColors } from '@/theme/colors';
 import { BlurbTypography } from '@/theme/typography';
 
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const DISMISS_THRESHOLD = 100;
+
 export function AddEntry() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id?: string }>();
   const isEditing = !!params.id;
+  const insets = useSafeAreaInsets();
+  
+  // Drawer animation
+  const drawerOffset = useSharedValue(0);
+  const chevronScale = useSharedValue(1);
 
   const [link, setLink] = useState('');
   const [title, setTitle] = useState('');
@@ -121,17 +140,71 @@ export function AddEntry() {
 
   const canPreview = link.trim().length > 0 && title.trim().length > 0;
 
+  const handleDismiss = useCallback(() => {
+    router.back();
+  }, [router]);
+
+  const pullUpGesture = Gesture.Pan()
+    .activeOffsetY(-10)
+    .failOffsetX([-30, 30])
+    .onChange((event) => {
+      if (event.translationY < 0) {
+        const distance = Math.abs(event.translationY);
+        drawerOffset.value = -distance;
+        chevronScale.value = interpolate(
+          distance,
+          [0, DISMISS_THRESHOLD],
+          [1, 0.8],
+          Extrapolation.CLAMP
+        );
+      }
+    })
+    .onEnd((event) => {
+      if (event.translationY < -DISMISS_THRESHOLD) {
+        // Threshold crossed - dismiss drawer
+        drawerOffset.value = withSpring(-SCREEN_HEIGHT, {
+          damping: 20,
+          stiffness: 100,
+        }, () => {
+          runOnJS(handleDismiss)();
+        });
+      } else {
+        // Below threshold - spring back
+        drawerOffset.value = withSpring(0, {
+          damping: 15,
+          stiffness: 150,
+        });
+        chevronScale.value = withSpring(1, {
+          damping: 15,
+          stiffness: 150,
+        });
+      }
+    });
+
+  const drawerStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ translateY: drawerOffset.value }],
+    };
+  });
+
+  const chevronStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scaleY: chevronScale.value }],
+    };
+  });
+
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
+    <Animated.View style={[styles.drawerContainer, drawerStyle]}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <Text style={styles.backButtonText}>Cancel</Text>
           </TouchableOpacity>
@@ -236,14 +309,29 @@ export function AddEntry() {
           )}
         </TouchableOpacity>
       </ScrollView>
+      <GestureDetector gesture={pullUpGesture}>
+        <View style={[styles.chevronContainer, { paddingBottom: insets.bottom + 20 }]}>
+          <Animated.View style={[styles.chevron, chevronStyle]}>
+            <View style={styles.chevronUp}>
+              <View style={[styles.chevronLine, styles.chevronLeft]} />
+              <View style={[styles.chevronLine, styles.chevronRight]} />
+            </View>
+          </Animated.View>
+        </View>
+      </GestureDetector>
     </KeyboardAvoidingView>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
+  drawerContainer: {
+    flex: 1,
+    backgroundColor: BlurbColors.backgroundElevated,
+  },
   container: {
     flex: 1,
-    backgroundColor: BlurbColors.background,
+    backgroundColor: BlurbColors.backgroundElevated,
   },
   scrollView: {
     flex: 1,
@@ -351,5 +439,35 @@ const styles = StyleSheet.create({
   previewButtonText: {
     ...BlurbTypography.entryTitle,
     color: BlurbColors.background,
+  },
+  chevronContainer: {
+    position: 'absolute',
+    bottom: 20,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+  },
+  chevron: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chevronUp: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chevronLine: {
+    width: 12,
+    height: 2,
+    backgroundColor: BlurbColors.textTertiary,
+    position: 'absolute',
+  },
+  chevronLeft: {
+    transform: [{ rotate: '45deg' }, { translateX: -4 }],
+  },
+  chevronRight: {
+    transform: [{ rotate: '-45deg' }, { translateX: 4 }],
   },
 });

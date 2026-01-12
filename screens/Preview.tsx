@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import QRCode from 'react-native-qrcode-svg';
 import { Image } from 'expo-image';
@@ -11,6 +12,7 @@ import { BlurbTypography } from '@/theme/typography';
 export function Preview() {
   const router = useRouter();
   const params = useLocalSearchParams<{ entry: string; isNew: string }>();
+  const insets = useSafeAreaInsets();
   
   const entry: Entry = useMemo(() => {
     try {
@@ -25,7 +27,7 @@ export function Preview() {
   if (!entry || !entry.link) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <Text style={styles.backButtonText}>Back</Text>
           </TouchableOpacity>
@@ -58,7 +60,7 @@ export function Preview() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Text style={styles.backButtonText}>Back</Text>
         </TouchableOpacity>

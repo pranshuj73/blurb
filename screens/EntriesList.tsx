@@ -5,19 +5,36 @@ import {
   Text,
   View,
   Alert,
-  RefreshControl,
+  Dimensions,
 } from 'react-native';
+import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  runOnJS,
+  interpolate,
+  Extrapolation,
+} from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Entry, storage } from '@/lib/storage';
 import { EntryRow } from '@/components/entry/entry-row';
 import { BlurbColors } from '@/theme/colors';
 import { BlurbTypography } from '@/theme/typography';
 
+const PULL_THRESHOLD = 120;
+
 export function EntriesList() {
   const [entries, setEntries] = useState<Entry[]>([]);
   const router = useRouter();
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const flatListRef = useRef<FlatList>(null);
+  const [scrollOffset, setScrollOffset] = useState(0);
+  const insets = useSafeAreaInsets();
+  
+  // Animation values
+  const pullDistance = useSharedValue(0);
+  const isPulling = useSharedValue(false);
 
   const loadEntries = useCallback(async () => {
     const loaded = await storage.getAllEntries();
@@ -105,17 +122,71 @@ export function EntriesList() {
     }
   }, [router]);
 
-  const onRefresh = useCallback(async () => {
-    setIsRefreshing(true);
-    try {
-      handleAddEntry();
-    } finally {
-      // Small delay to show the refresh animation
-      setTimeout(() => {
-        setIsRefreshing(false);
-      }, 500);
-    }
-  }, [handleAddEntry]);
+
+  const pullGesture = Gesture.Pan()
+    .activeOffsetY(10)
+    .failOffsetX([-30, 30])
+    .onStart(() => {
+      if (scrollOffset <= 0) {
+        isPulling.value = true;
+      }
+    })
+    .onChange((event) => {
+      if (scrollOffset <= 0 && event.translationY > 0) {
+        const distance = Math.min(event.translationY, PULL_THRESHOLD * 1.5);
+        pullDistance.value = distance;
+      } else {
+        pullDistance.value = 0;
+        isPulling.value = false;
+      }
+    })
+    .onEnd((event) => {
+      if (scrollOffset <= 0 && event.translationY > PULL_THRESHOLD) {
+        // Threshold crossed - navigate
+        pullDistance.value = withSpring(0, {
+          damping: 20,
+          stiffness: 100,
+        });
+        runOnJS(handleAddEntry)();
+      } else {
+        // Below threshold - spring back
+        pullDistance.value = withSpring(0, {
+          damping: 15,
+          stiffness: 150,
+        });
+      }
+      isPulling.value = false;
+    });
+
+  const indicatorOpacity = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      pullDistance.value,
+      [0, 20, PULL_THRESHOLD],
+      [0, 0.3, 1],
+      Extrapolation.CLAMP
+    );
+    return { opacity };
+  });
+
+  const indicatorTranslateY = useAnimatedStyle(() => {
+    const translateY = interpolate(
+      pullDistance.value,
+      [0, PULL_THRESHOLD],
+      [-40, 20],
+      Extrapolation.CLAMP
+    );
+    return { transform: [{ translateY }] };
+  });
+
+  const textOpacity = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      pullDistance.value,
+      [40, PULL_THRESHOLD],
+      [0, 1],
+      Extrapolation.CLAMP
+    );
+    return { opacity };
+  });
 
   const renderEntry = useCallback(
     ({ item }: { item: Entry }) => (
@@ -139,24 +210,38 @@ export function EntriesList() {
 
   return (
     <View style={styles.container}>
-      <FlatList
-        ref={flatListRef}
-        data={entries}
-        renderItem={renderEntry}
-        keyExtractor={(item) => item.id}
-        ListEmptyComponent={renderEmpty}
-        contentContainerStyle={entries.length === 0 ? styles.emptyList : undefined}
-        scrollEnabled={true}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={onRefresh}
-            tintColor={BlurbColors.text}
-            colors={[BlurbColors.text]}
-            progressViewOffset={20}
-          />
-        }
-      />
+      <Animated.View
+        style={[
+          styles.pullIndicator,
+          { paddingTop: insets.top + 8 },
+          indicatorOpacity,
+          indicatorTranslateY,
+        ]}
+        pointerEvents="none"
+      >
+        <View style={styles.indicatorLine} />
+        <Animated.View style={[styles.indicatorText, textOpacity]}>
+          <Text style={styles.indicatorTextContent}>+ A D D  E N T R Y</Text>
+        </Animated.View>
+      </Animated.View>
+      <GestureDetector gesture={pullGesture}>
+        <FlatList
+          ref={flatListRef}
+          data={entries}
+          renderItem={renderEntry}
+          keyExtractor={(item) => item.id}
+          ListEmptyComponent={renderEmpty}
+          contentContainerStyle={[
+            entries.length === 0 ? styles.emptyList : undefined,
+            { paddingTop: insets.top },
+          ]}
+          scrollEnabled={true}
+          onScroll={(event) => {
+            setScrollOffset(event.nativeEvent.contentOffset.y);
+          }}
+          scrollEventThrottle={16}
+        />
+      </GestureDetector>
     </View>
   );
 }
@@ -185,5 +270,31 @@ const styles = StyleSheet.create({
     ...BlurbTypography.subtitle,
     color: BlurbColors.textSecondary,
     textAlign: 'center',
+  },
+  pullIndicator: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    zIndex: 1000,
+  },
+  indicatorLine: {
+    width: 40,
+    height: 4,
+    backgroundColor: BlurbColors.text,
+    borderRadius: 2,
+    marginBottom: 12,
+  },
+  indicatorText: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  indicatorTextContent: {
+    ...BlurbTypography.small,
+    color: BlurbColors.text,
+    letterSpacing: 2,
+    fontWeight: '500',
   },
 });

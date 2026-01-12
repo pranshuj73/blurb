@@ -8,6 +8,7 @@ import {
   StatusBar,
   Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
 import QRCode from 'react-native-qrcode-svg';
@@ -20,6 +21,7 @@ import { BlurbTypography } from '@/theme/typography';
 export function FullscreenQR() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id: string }>();
+  const insets = useSafeAreaInsets();
   const [entry, setEntry] = useState<Entry | null>(null);
   const [showControls, setShowControls] = useState(false);
   const [maxBrightness, setMaxBrightness] = useState(false);
@@ -116,7 +118,7 @@ export function FullscreenQR() {
         <StatusBar hidden={!showControls} />
         
         {showControls && (
-          <View style={styles.controls}>
+          <View style={[styles.controls, { paddingTop: insets.top + 16 }]}>
             <TouchableOpacity style={styles.controlButton} onPress={handleClose}>
               <Text style={styles.controlButtonText}>Close</Text>
             </TouchableOpacity>
@@ -190,7 +192,6 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
     paddingHorizontal: 16,
     paddingBottom: 16,
     backgroundColor: BlurbColors.background,
