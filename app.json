@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "blurb.",
-    "slug": "blurb.",
+    "name": "blurb",
+    "slug": "blurb,
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -54,6 +54,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "a5348675-8114-46f7-b3b6-32d9adf452ed"
+      }
+    },
+    "owner": "prnsh"
   }
 }
