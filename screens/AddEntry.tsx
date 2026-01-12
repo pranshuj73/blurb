@@ -1,8 +1,8 @@
+import { ThemedIcon } from '@/components/entry/themed-icon';
 import { scrapeMetadata } from '@/lib/scraping';
 import { Entry, storage } from '@/lib/storage';
 import { BlurbColors } from '@/theme/colors';
 import { BlurbTypography } from '@/theme/typography';
-import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -424,14 +424,10 @@ export function AddEntry() {
             <Text style={styles.label}>Icon</Text>
             <View style={styles.iconSection}>
               {iconUri && (
-                <Image
-                  source={{ uri: iconUri }}
-                  style={styles.iconPreview}
-                  contentFit="cover"
-                />
+                <ThemedIcon uri={iconUri} size={64} />
               )}
               {!iconUri && (
-                <View style={[styles.iconPreview, styles.iconPlaceholder]}>
+                <View style={[styles.iconPlaceholder, { width: 64, height: 64, borderRadius: 8 }]}>
                   <Text style={styles.iconPlaceholderText}>No icon</Text>
                 </View>
               )}
@@ -590,12 +586,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-  },
-  iconPreview: {
-    width: 64,
-    height: 64,
-    borderRadius: 8,
-    backgroundColor: BlurbColors.backgroundElevated,
   },
   iconPlaceholder: {
     justifyContent: 'center',

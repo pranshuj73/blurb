@@ -3,7 +3,6 @@ import { Subheading } from '@/components/ui/subheading';
 import { Entry, storage } from '@/lib/storage';
 import { BlurbColors } from '@/theme/colors';
 import * as Brightness from 'expo-brightness';
-import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -213,13 +212,6 @@ export function FullscreenQR() {
 
         <View style={styles.content}>
           <View style={styles.header}>
-            {entry.iconUri && (
-              <Image
-                source={{ uri: entry.iconUri }}
-                style={styles.icon}
-                contentFit="cover"
-              />
-            )}
             <View style={styles.titleSection}>
               <Heading size="2xl" weight="600" style={styles.headingText}>{entry.title}</Heading>
               {entry.subtitle && (
@@ -305,12 +297,6 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingHorizontal: 16,
     paddingVertical: 8,
-  },
-  icon: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    marginRight: 12,
   },
   titleSection: {
     flex: 1,

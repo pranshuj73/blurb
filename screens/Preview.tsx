@@ -1,20 +1,20 @@
-import React, { useMemo, useEffect, useRef } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Platform, Dimensions } from 'react-native';
+import { ThemedIcon } from '@/components/entry/themed-icon';
+import { Heading } from '@/components/ui/heading';
+import { Label } from '@/components/ui/label';
+import { Subheading } from '@/components/ui/subheading';
+import { QR_CONFIG } from '@/lib/qr';
+import { Entry, storage } from '@/lib/storage';
+import { BlurbColors } from '@/theme/colors';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useMemo } from 'react';
+import { Dimensions, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import QRCode from 'react-native-qrcode-svg';
 import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import QRCode from 'react-native-qrcode-svg';
-import { Image } from 'expo-image';
-import { Entry, storage } from '@/lib/storage';
-import { QR_CONFIG } from '@/lib/qr';
-import { BlurbColors } from '@/theme/colors';
-import { Heading } from '@/components/ui/heading';
-import { Subheading } from '@/components/ui/subheading';
-import { Label } from '@/components/ui/label';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -127,11 +127,7 @@ export function Preview() {
       <View style={styles.preview}>
         <View style={styles.previewHeader}>
           {entry.iconUri && (
-            <Image
-              source={{ uri: entry.iconUri }}
-              style={styles.icon}
-              contentFit="cover"
-            />
+            <ThemedIcon uri={entry.iconUri} size={52} />
           )}
           <View style={styles.titleSection}>
             <Heading size="lg" weight="300">{entry.title}</Heading>
@@ -238,12 +234,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     marginBottom: 40,
-  },
-  icon: {
-    width: 52,
-    height: 52,
-    borderRadius: 12,
-    marginRight: 16,
   },
   titleSection: {
     flex: 1,

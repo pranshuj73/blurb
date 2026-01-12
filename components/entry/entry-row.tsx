@@ -1,9 +1,8 @@
-import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, Platform } from 'react-native';
-import { Image } from 'expo-image';
-import { BlurbColors } from '@/theme/colors';
-import { BlurbTypography } from '@/theme/typography';
 import { Entry } from '@/lib/storage';
+import { BlurbColors } from '@/theme/colors';
+import React from 'react';
+import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ThemedIcon } from './themed-icon';
 
 interface EntryRowProps {
   entry: Entry;
@@ -23,12 +22,7 @@ export function EntryRow({ entry, onPress, onLongPress }: EntryRowProps) {
       <View style={styles.card}>
         <View style={styles.iconContainer}>
           {entry.iconUri ? (
-            <Image
-              source={{ uri: entry.iconUri }}
-              style={styles.icon}
-              contentFit="cover"
-              transition={200}
-            />
+            <ThemedIcon uri={entry.iconUri} size={56} />
           ) : (
             <View style={styles.iconPlaceholder}>
               <View style={styles.iconPlaceholderInner} />
@@ -72,13 +66,6 @@ const styles = StyleSheet.create({
   },
   iconContainer: {
     marginRight: 20,
-  },
-  icon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#FFFFFF',
-    overflow: 'hidden',
   },
   iconPlaceholder: {
     width: 56,
