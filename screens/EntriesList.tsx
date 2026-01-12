@@ -1,28 +1,27 @@
-import React, { useCallback, useState, useRef } from 'react';
+import { EntryRow } from '@/components/entry/entry-row';
+import { Entry, storage } from '@/lib/storage';
+import { BlurbColors } from '@/theme/colors';
+import { BlurbTypography } from '@/theme/typography';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useRef, useState } from 'react';
 import {
+  Alert,
+  Dimensions,
   FlatList,
   StyleSheet,
   Text,
-  View,
-  Alert,
-  Dimensions,
-  Platform,
+  View
 } from 'react-native';
-import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  runOnJS,
-  interpolate,
   Extrapolation,
+  interpolate,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter, useFocusEffect } from 'expo-router';
-import { Entry, storage } from '@/lib/storage';
-import { EntryRow } from '@/components/entry/entry-row';
-import { BlurbColors } from '@/theme/colors';
-import { BlurbTypography } from '@/theme/typography';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PULL_THRESHOLD = 180;
@@ -333,17 +332,13 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 16,
-    paddingBottom: 32,
+    paddingBottom: 8,
   },
   brandText: {
     fontSize: 24,
-    fontWeight: '300',
+    fontWeight: '600',
     color: BlurbColors.text,
     letterSpacing: -0.5,
-    fontFamily: Platform.select({
-      ios: 'SF Pro Display',
-      android: 'sans-serif-light',
-      default: 'system-ui',
-    }),
+    fontFamily: 'Manrope',
   },
 });
