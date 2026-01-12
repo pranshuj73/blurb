@@ -202,9 +202,11 @@ export function EntriesList() {
           keyExtractor={(item) => item.id}
           ListEmptyComponent={renderEmpty}
           ListHeaderComponent={
-            <View style={[styles.header, { paddingTop: insets.top + SCREEN_HEIGHT * TOP_PADDING_PERCENT }]}>
-              <Text style={styles.brandText}>blurb.</Text>
-            </View>
+            entries.length > 0 ? (
+              <View style={[styles.header, { paddingTop: insets.top + SCREEN_HEIGHT * TOP_PADDING_PERCENT }]}>
+                <Text style={styles.brandText}>blurb.</Text>
+              </View>
+            ) : null
           }
           contentContainerStyle={[
             entries.length === 0 ? styles.emptyList : undefined,

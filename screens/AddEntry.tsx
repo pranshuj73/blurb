@@ -212,6 +212,45 @@ export function AddEntry() {
     }
   }, [canSave, params.id, link, title, subtitle, iconUri, router, drawerOffset]);
 
+  const handleDelete = useCallback(async () => {
+    if (!params.id) {
+      return;
+    }
+
+    Alert.alert(
+      'Delete Entry',
+      `Are you sure you want to delete "${title || 'this entry'}"? This action cannot be undone.`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await storage.deleteEntry(params.id!);
+              
+              // Animate out
+              drawerOffset.value = withSpring(SCREEN_HEIGHT, {
+                damping: 30,
+                stiffness: 300,
+                mass: 0.7,
+              });
+              setTimeout(() => {
+                router.back();
+              }, 200);
+            } catch (error) {
+              console.error('Error deleting entry:', error);
+              Alert.alert('Error', 'Failed to delete entry. Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  }, [params.id, title, router, drawerOffset]);
+
   const handleDismiss = useCallback(() => {
     // Animate out
     drawerOffset.value = withSpring(SCREEN_HEIGHT, {
@@ -454,17 +493,26 @@ export function AddEntry() {
         </View>
 
         {isEditing ? (
-          <TouchableOpacity
-            style={[styles.saveButton, !canSave && styles.saveButtonDisabled]}
-            onPress={handleSave}
-            disabled={!canSave || isSaving}
-          >
-            {isSaving ? (
-              <ActivityIndicator color={BlurbColors.background} />
-            ) : (
-              <Text style={styles.saveButtonText}>Save Changes</Text>
-            )}
-          </TouchableOpacity>
+          <>
+            <TouchableOpacity
+              style={[styles.saveButton, !canSave && styles.saveButtonDisabled]}
+              onPress={handleSave}
+              disabled={!canSave || isSaving}
+            >
+              {isSaving ? (
+                <ActivityIndicator color={BlurbColors.background} />
+              ) : (
+                <Text style={styles.saveButtonText}>Save Changes</Text>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.deleteButton}
+              onPress={handleDelete}
+              disabled={isSaving}
+            >
+              <Text style={styles.deleteButtonText}>Delete Entry</Text>
+            </TouchableOpacity>
+          </>
         ) : (
           <TouchableOpacity
             style={[styles.previewButton, !canPreview && styles.previewButtonDisabled]}
@@ -641,6 +689,20 @@ const styles = StyleSheet.create({
   saveButtonText: {
     ...BlurbTypography.entryTitle,
     color: BlurbColors.background,
+  },
+  deleteButton: {
+    backgroundColor: 'transparent',
+    marginHorizontal: 16,
+    marginTop: 12,
+    paddingVertical: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: BlurbColors.border,
+  },
+  deleteButtonText: {
+    ...BlurbTypography.entryTitle,
+    color: '#FF3B30',
   },
   pullIndicator: {
     position: 'absolute',
