@@ -5,7 +5,6 @@ import { BlurbTypography } from '@/theme/typography';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useRef, useState } from 'react';
 import {
-  Alert,
   Dimensions,
   FlatList,
   StyleSheet,
@@ -65,66 +64,12 @@ export function EntriesList() {
 
   const handleEntryLongPress = useCallback(
     (entry: Entry) => {
-      Alert.alert(
-        entry.title,
-        undefined,
-        [
-          {
-            text: 'Edit',
-            onPress: () => {
-              setTimeout(() => {
-                router.push(`/add-entry?id=${entry.id}`);
-              }, 50);
-            },
-          },
-          {
-            text: 'Share QR',
-            onPress: () => {
-              // TODO: Implement share QR
-              Alert.alert('Share QR', 'Feature coming soon');
-            },
-          },
-          {
-            text: 'Share Link',
-            onPress: () => {
-              // TODO: Implement share link
-              Alert.alert('Share Link', entry.link);
-            },
-          },
-          {
-            text: 'Duplicate',
-            onPress: async () => {
-              await storage.duplicateEntry(entry.id);
-              loadEntries();
-            },
-          },
-          {
-            text: 'Delete',
-            style: 'destructive',
-            onPress: () => {
-              Alert.alert(
-                'Delete Entry',
-                `Are you sure you want to delete "${entry.title}"?`,
-                [
-                  { text: 'Cancel', style: 'cancel' },
-                  {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: async () => {
-                      await storage.deleteEntry(entry.id);
-                      loadEntries();
-                    },
-                  },
-                ]
-              );
-            },
-          },
-          { text: 'Cancel', style: 'cancel' },
-        ],
-        { cancelable: true }
-      );
+      // Navigate directly to edit page
+      setTimeout(() => {
+        router.push(`/add-entry?id=${entry.id}`);
+      }, 50);
     },
-    [router, loadEntries]
+    [router]
   );
 
   const handleAddEntry = useCallback(() => {

@@ -1,6 +1,6 @@
-import React from 'react';
-import { View, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
+import React from 'react';
+import { StyleSheet, View } from 'react-native';
 
 interface ThemedIconProps {
   uri: string;
@@ -17,7 +17,8 @@ interface ThemedIconProps {
  * - Consistent sizing
  */
 export function ThemedIcon({ uri, size, borderRadius, style }: ThemedIconProps) {
-  const iconSize = size * 0.80;
+  // Match the placeholder inner size (32px)
+  const iconSize = 32;
   const padding = (size - iconSize) / 2;
   // Always make icons circular
   const finalBorderRadius = size / 2;
