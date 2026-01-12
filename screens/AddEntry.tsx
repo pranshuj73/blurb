@@ -1,34 +1,34 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { scrapeMetadata } from '@/lib/scraping';
+import { Entry, storage } from '@/lib/storage';
+import { BlurbColors } from '@/theme/colors';
+import { BlurbTypography } from '@/theme/typography';
+import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-  TouchableOpacity,
   ActivityIndicator,
+  Alert,
+  Dimensions,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Dimensions,
-  Alert,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  runOnJS,
-  interpolate,
   Extrapolation,
+  interpolate,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Image } from 'expo-image';
-import * as ImagePicker from 'expo-image-picker';
-import { Entry, storage } from '@/lib/storage';
-import { scrapeMetadata } from '@/lib/scraping';
-import { BlurbColors } from '@/theme/colors';
-import { BlurbTypography } from '@/theme/typography';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const DISMISS_THRESHOLD = 180;
@@ -79,7 +79,7 @@ export function AddEntry() {
   };
 
   const handleSyncMetadata = useCallback(async () => {
-    if (!link.trim() || !(link.startsWith('http://') || link.startsWith('https://'))) {
+    if (!link.trim()) {
       return;
     }
 

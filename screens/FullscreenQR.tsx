@@ -9,6 +9,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   Dimensions,
   Platform,
+  Share,
   StatusBar,
   StyleSheet,
   Text,
@@ -102,12 +103,27 @@ export function FullscreenQR() {
     }
   }, [maxBrightness, originalBrightness]);
 
-  const handleShare = useCallback(() => {
-    // TODO: Implement share functionality
-    // For now, just show an alert
-    if (entry) {
-      // Share the QR code or link
-      console.log('Share:', entry.link);
+  const handleShare = useCallback(async () => {
+    if (!entry?.link) return;
+    
+    // Normalize URL - add https:// if missing
+    let normalizedLink = entry.link.trim();
+    if (!normalizedLink.startsWith('http://') && !normalizedLink.startsWith('https://')) {
+      normalizedLink = `https://${normalizedLink}`;
+    }
+    
+    try {
+      const result = await Share.share({
+        message: normalizedLink,
+        url: normalizedLink,
+      });
+      
+      if (result.action === Share.sharedAction) {
+        // User shared successfully
+        console.log('Shared successfully');
+      }
+    } catch (error: any) {
+      console.error('Error sharing:', error?.message || error);
     }
   }, [entry]);
 
@@ -168,12 +184,14 @@ export function FullscreenQR() {
           <StatusBar hidden={!showControls} />
         
         {showControls && (
-          <View style={[styles.controls, { paddingTop: insets.top + 16 }]}>
-            <TouchableOpacity style={styles.controlButton} onPress={handleClose}>
-              <Text style={styles.controlButtonText}>Close</Text>
-            </TouchableOpacity>
+          <>
+            <View style={[styles.topControls, { paddingTop: insets.top + 16 }]}>
+              <TouchableOpacity style={styles.controlButton} onPress={handleClose}>
+                <Text style={styles.controlButtonText}>Close</Text>
+              </TouchableOpacity>
+            </View>
             
-            <View style={styles.controlButtons}>
+            <View style={[styles.bottomControls, { paddingBottom: insets.bottom + 16 }]}>
               <TouchableOpacity
                 style={styles.controlButton}
                 onPress={handleShare}
@@ -190,7 +208,7 @@ export function FullscreenQR() {
                 </Text>
               </TouchableOpacity>
             </View>
-          </View>
+          </>
         )}
 
         <View style={styles.content}>
@@ -242,7 +260,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 24,
   },
-  controls: {
+  topControls: {
     position: 'absolute',
     top: 0,
     left: 0,
@@ -252,10 +270,17 @@ const styles = StyleSheet.create({
     backgroundColor: BlurbColors.background,
     zIndex: 10,
   },
-  controlButtons: {
+  bottomControls: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    backgroundColor: BlurbColors.background,
+    zIndex: 10,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 16,
   },
   controlButton: {
     paddingVertical: 8,
