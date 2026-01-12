@@ -90,6 +90,20 @@ export function FullscreenQR() {
     return (
       <View style={styles.container}>
         <Text style={styles.loadingText}>Loading...</Text>
+        <TouchableOpacity style={styles.backButtonFallback} onPress={() => router.back()}>
+          <Text style={styles.controlButtonText}>Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (!entry.link) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.loadingText}>Invalid entry</Text>
+        <TouchableOpacity style={styles.backButtonFallback} onPress={() => router.back()}>
+          <Text style={styles.controlButtonText}>Back</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -230,5 +244,12 @@ const styles = StyleSheet.create({
   loadingText: {
     ...BlurbTypography.body,
     color: BlurbColors.textSecondary,
+    marginBottom: 16,
+  },
+  backButtonFallback: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    backgroundColor: BlurbColors.backgroundElevated,
+    borderRadius: 8,
   },
 });

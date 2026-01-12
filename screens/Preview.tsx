@@ -22,8 +22,21 @@ export function Preview() {
 
   const isNew = params.isNew === 'true';
 
-  if (!entry) {
-    return null;
+  if (!entry || !entry.link) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Text style={styles.backButtonText}>Back</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Error</Text>
+          <View style={styles.backButton} />
+        </View>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>Invalid entry data</Text>
+        </View>
+      </View>
+    );
   }
 
   const handleSave = async () => {
@@ -31,14 +44,13 @@ export function Preview() {
     router.replace('/');
   };
 
-  const handleViewFullscreen = () => {
+  const handleViewFullscreen = async () => {
     if (!isNew) {
       router.push(`/fullscreen-qr?id=${entry.id}`);
     } else {
       // Save first, then view
-      storage.saveEntry(entry).then(() => {
-        router.push(`/fullscreen-qr?id=${entry.id}`);
-      });
+      await storage.saveEntry(entry);
+      router.push(`/fullscreen-qr?id=${entry.id}`);
     }
   };
 
@@ -219,5 +231,16 @@ const styles = StyleSheet.create({
   fullscreenButtonText: {
     ...BlurbTypography.entryTitle,
     color: BlurbColors.background,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  errorText: {
+    ...BlurbTypography.body,
+    color: BlurbColors.textSecondary,
+    textAlign: 'center',
   },
 });

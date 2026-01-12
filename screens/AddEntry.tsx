@@ -37,12 +37,16 @@ export function AddEntry() {
   }, [isEditing, params.id]);
 
   const loadEntry = async (id: string) => {
-    const entry = await storage.getEntry(id);
-    if (entry) {
-      setLink(entry.link);
-      setTitle(entry.title);
-      setSubtitle(entry.subtitle || '');
-      setIconUri(entry.iconUri);
+    try {
+      const entry = await storage.getEntry(id);
+      if (entry) {
+        setLink(entry.link);
+        setTitle(entry.title);
+        setSubtitle(entry.subtitle || '');
+        setIconUri(entry.iconUri);
+      }
+    } catch (error) {
+      console.error('Error loading entry:', error);
     }
   };
 
@@ -75,15 +79,19 @@ export function AddEntry() {
   );
 
   const handlePickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
 
-    if (!result.canceled && result.assets[0]) {
-      setIconUri(result.assets[0].uri);
+      if (!result.canceled && result.assets[0]) {
+        setIconUri(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
     }
   };
 
@@ -93,12 +101,12 @@ export function AddEntry() {
     }
 
     const entry: Entry = {
-      id: params.id || `temp-${Date.now()}`,
+      id: params.id || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       link: link.trim(),
       title: title.trim(),
       subtitle: subtitle.trim() || undefined,
       iconUri,
-      createdAt: Date.now(),
+      createdAt: params.id ? Date.now() : Date.now(), // Will be set properly on save
       updatedAt: Date.now(),
     };
 

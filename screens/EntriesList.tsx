@@ -1,12 +1,12 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useRef } from 'react';
 import {
   FlatList,
   StyleSheet,
   Text,
   View,
   Alert,
+  RefreshControl,
 } from 'react-native';
-import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Entry, storage } from '@/lib/storage';
 import { EntryRow } from '@/components/entry/entry-row';
@@ -16,6 +16,8 @@ import { BlurbTypography } from '@/theme/typography';
 export function EntriesList() {
   const [entries, setEntries] = useState<Entry[]>([]);
   const router = useRouter();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const flatListRef = useRef<FlatList>(null);
 
   const loadEntries = useCallback(async () => {
     const loaded = await storage.getAllEntries();
@@ -95,14 +97,25 @@ export function EntriesList() {
     [router, loadEntries]
   );
 
-  const swipeGesture = Gesture.Pan()
-    .minDistance(100)
-    .activeOffsetX(100)
-    .onEnd((event) => {
-      if (event.translationX > 100) {
-        router.push('/add-entry');
-      }
-    });
+  const handleAddEntry = useCallback(() => {
+    try {
+      router.push('/add-entry');
+    } catch (error) {
+      console.error('Error navigating to add-entry:', error);
+    }
+  }, [router]);
+
+  const onRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      handleAddEntry();
+    } finally {
+      // Small delay to show the refresh animation
+      setTimeout(() => {
+        setIsRefreshing(false);
+      }, 500);
+    }
+  }, [handleAddEntry]);
 
   const renderEntry = useCallback(
     ({ item }: { item: Entry }) => (
@@ -119,22 +132,31 @@ export function EntriesList() {
     <View style={styles.emptyContainer}>
       <Text style={styles.emptyTitle}>No entries yet</Text>
       <Text style={styles.emptySubtitle}>
-        Swipe right to add your first entry
+        Pull down to add your first entry
       </Text>
     </View>
   );
 
   return (
     <View style={styles.container}>
-      <GestureDetector gesture={swipeGesture}>
-        <FlatList
-          data={entries}
-          renderItem={renderEntry}
-          keyExtractor={(item) => item.id}
-          ListEmptyComponent={renderEmpty}
-          contentContainerStyle={entries.length === 0 ? styles.emptyList : undefined}
-        />
-      </GestureDetector>
+      <FlatList
+        ref={flatListRef}
+        data={entries}
+        renderItem={renderEntry}
+        keyExtractor={(item) => item.id}
+        ListEmptyComponent={renderEmpty}
+        contentContainerStyle={entries.length === 0 ? styles.emptyList : undefined}
+        scrollEnabled={true}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={onRefresh}
+            tintColor={BlurbColors.text}
+            colors={[BlurbColors.text]}
+            progressViewOffset={20}
+          />
+        }
+      />
     </View>
   );
 }
