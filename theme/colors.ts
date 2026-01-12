@@ -6,7 +6,7 @@
 export const BlurbColors = {
   // True dark background (near-black, not gray)
   background: '#000000',
-  backgroundElevated: '#0A0A0A',
+  backgroundElevated: '#1C1C1E',
   
   // High contrast text
   text: '#FFFFFF',

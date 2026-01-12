@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import { BlurbColors } from '@/theme/colors';
 import { BlurbTypography } from '@/theme/typography';
@@ -17,26 +17,28 @@ export function EntryRow({ entry, onPress, onLongPress }: EntryRowProps) {
       style={styles.container}
       onPress={onPress}
       onLongPress={onLongPress}
-      activeOpacity={0.7}
+      activeOpacity={0.8}
     >
-      <View style={styles.content}>
-        {entry.iconUri && (
-          <Image
-            source={{ uri: entry.iconUri }}
-            style={styles.icon}
-            contentFit="cover"
-            transition={200}
-          />
-        )}
-        {!entry.iconUri && <View style={[styles.icon, styles.iconPlaceholder]} />}
+      <View style={styles.card}>
+        <View style={styles.iconContainer}>
+          {entry.iconUri ? (
+            <Image
+              source={{ uri: entry.iconUri }}
+              style={styles.icon}
+              contentFit="cover"
+              transition={200}
+            />
+          ) : (
+            <View style={styles.iconPlaceholder}>
+              <View style={styles.iconPlaceholderInner} />
+            </View>
+          )}
+        </View>
         
         <View style={styles.textContainer}>
-          <View style={styles.titleRow}>
-            {entry.locked && <View style={styles.lockIndicator} />}
-            <View style={styles.titleText}>
-              <Text style={styles.title}>{entry.title}</Text>
-            </View>
-          </View>
+          <Text style={styles.title} numberOfLines={1}>
+            {entry.title}
+          </Text>
           {entry.subtitle && (
             <Text style={styles.subtitle} numberOfLines={1}>
               {entry.subtitle}
@@ -44,70 +46,80 @@ export function EntryRow({ entry, onPress, onLongPress }: EntryRowProps) {
           )}
         </View>
       </View>
-      
-      {entry.accentColor && (
-        <View style={[styles.accent, { backgroundColor: entry.accentColor }]} />
-      )}
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
     backgroundColor: BlurbColors.background,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: BlurbColors.border,
-    minHeight: 72,
-    justifyContent: 'center',
   },
-  content: {
+  card: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    backgroundColor: BlurbColors.backgroundElevated,
+    borderRadius: 20,
+    padding: 20,
+    minHeight: 88,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  iconContainer: {
+    marginRight: 20,
   },
   icon: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
-    marginRight: 12,
-    backgroundColor: BlurbColors.backgroundElevated,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
   },
   iconPlaceholder: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  iconPlaceholderInner: {
+    width: 32,
+    height: 32,
+    borderRadius: 6,
     backgroundColor: BlurbColors.pressable,
   },
   textContainer: {
     flex: 1,
     justifyContent: 'center',
   },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  lockIndicator: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: BlurbColors.textSecondary,
-    marginRight: 6,
-  },
-  titleText: {
-    flex: 1,
-  },
   title: {
-    ...BlurbTypography.entryTitle,
+    fontSize: 19,
+    fontWeight: '600',
+    lineHeight: 26,
     color: BlurbColors.text,
+    marginBottom: 6,
+    letterSpacing: -0.3,
+    fontFamily: Platform.select({
+      ios: 'SF Pro Display',
+      android: 'sans-serif-medium',
+      default: 'system-ui',
+    }),
   },
   subtitle: {
-    ...BlurbTypography.subtitle,
+    fontSize: 15,
+    fontWeight: '400',
+    lineHeight: 20,
     color: BlurbColors.textSecondary,
-  },
-  accent: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 3,
+    letterSpacing: -0.2,
+    fontFamily: Platform.select({
+      ios: 'SF Pro Text',
+      android: 'sans-serif',
+      default: 'system-ui',
+    }),
   },
 });

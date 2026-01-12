@@ -7,7 +7,13 @@ import {
   TouchableWithoutFeedback,
   StatusBar,
   Platform,
+  Dimensions,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
@@ -18,6 +24,8 @@ import { QR_CONFIG } from '@/lib/qr';
 import { BlurbColors } from '@/theme/colors';
 import { BlurbTypography } from '@/theme/typography';
 
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+
 export function FullscreenQR() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id: string }>();
@@ -26,10 +34,32 @@ export function FullscreenQR() {
   const [showControls, setShowControls] = useState(false);
   const [maxBrightness, setMaxBrightness] = useState(false);
   const [originalBrightness, setOriginalBrightness] = useState<number | null>(null);
+  
+  // Animation for smooth fade in/out
+  const screenOpacity = useSharedValue(0);
+  const screenScale = useSharedValue(0.95);
 
   useEffect(() => {
     loadEntry();
+    // Animate in
+    screenOpacity.value = withSpring(1, {
+      damping: 28,
+      stiffness: 300,
+      mass: 0.7,
+    });
+    screenScale.value = withSpring(1, {
+      damping: 28,
+      stiffness: 300,
+      mass: 0.7,
+    });
   }, [params.id]);
+
+  const screenStyle = useAnimatedStyle(() => {
+    return {
+      opacity: screenOpacity.value,
+      transform: [{ scale: screenScale.value }],
+    };
+  });
 
   useEffect(() => {
     // Restore brightness when leaving screen
@@ -82,11 +112,26 @@ export function FullscreenQR() {
   }, [entry]);
 
   const handleClose = useCallback(() => {
+    // Animate out
+    screenOpacity.value = withSpring(0, {
+      damping: 30,
+      stiffness: 300,
+      mass: 0.7,
+    });
+    screenScale.value = withSpring(0.95, {
+      damping: 30,
+      stiffness: 300,
+      mass: 0.7,
+    });
+    
     if (maxBrightness && originalBrightness !== null) {
       Brightness.setBrightnessAsync(originalBrightness);
     }
-    router.back();
-  }, [router, maxBrightness, originalBrightness]);
+    
+    setTimeout(() => {
+      router.back();
+    }, 200);
+  }, [router, maxBrightness, originalBrightness, screenOpacity, screenScale]);
 
   if (!entry) {
     return (
@@ -113,9 +158,10 @@ export function FullscreenQR() {
   const qrSize = QR_CONFIG.getFullscreenSize();
 
   return (
-    <TouchableWithoutFeedback onPress={handleToggleControls}>
-      <View style={styles.container}>
-        <StatusBar hidden={!showControls} />
+    <Animated.View style={[styles.container, screenStyle]}>
+      <TouchableWithoutFeedback onPress={handleToggleControls}>
+        <View style={styles.innerContainer}>
+          <StatusBar hidden={!showControls} />
         
         {showControls && (
           <View style={[styles.controls, { paddingTop: insets.top + 16 }]}>
@@ -160,18 +206,27 @@ export function FullscreenQR() {
             </View>
           </View>
 
-          <View style={styles.qrContainer}>
-            <QRCode
-              value={entry.link}
-              size={qrSize}
-              color={BlurbColors.qrForeground}
-              backgroundColor={BlurbColors.qrBackground}
-              errorCorrectionLevel={QR_CONFIG.errorCorrectionLevel}
-            />
+          <View style={styles.qrSpacer} />
+
+          <View style={styles.qrWrapper}>
+            <View style={styles.qrContainer}>
+              <QRCode
+                value={entry.link}
+                size={qrSize}
+                color={BlurbColors.qrForeground}
+                backgroundColor={BlurbColors.qrBackground}
+                errorCorrectionLevel={QR_CONFIG.errorCorrectionLevel}
+                logo={entry.iconUri ? { uri: entry.iconUri } : undefined}
+                logoSize={qrSize * 0.15}
+                logoBackgroundColor={BlurbColors.qrBackground}
+                logoMargin={4}
+              />
+            </View>
           </View>
         </View>
-      </View>
-    </TouchableWithoutFeedback>
+        </View>
+      </TouchableWithoutFeedback>
+    </Animated.View>
   );
 }
 
@@ -179,6 +234,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: BlurbColors.background,
+  },
+  innerContainer: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -207,45 +265,92 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   controlButtonText: {
-    ...BlurbTypography.body,
+    fontSize: 16,
+    fontWeight: '500',
+    lineHeight: 22,
+    letterSpacing: -0.2,
     color: BlurbColors.text,
+    fontFamily: Platform.select({
+      ios: 'SF Pro Text',
+      android: 'sans-serif-medium',
+      default: 'system-ui',
+    }),
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 32,
+    alignItems: 'flex-start',
+    marginBottom: 48,
     width: '100%',
-    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  qrSpacer: {
+    height: 48,
   },
   icon: {
-    width: 32,
-    height: 32,
-    borderRadius: 6,
-    marginRight: 12,
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    marginRight: 16,
   },
   titleSection: {
-    alignItems: 'center',
+    flex: 1,
+    alignItems: 'flex-start',
   },
   title: {
-    ...BlurbTypography.title,
+    fontSize: 36,
+    fontWeight: '700',
+    lineHeight: 44,
+    letterSpacing: -1.2,
     color: BlurbColors.text,
-    textAlign: 'center',
-    marginBottom: 4,
+    textAlign: 'left',
+    marginBottom: 8,
+    fontFamily: Platform.select({
+      ios: 'SF Pro Display',
+      android: 'sans-serif-medium',
+      default: 'system-ui',
+    }),
   },
   subtitle: {
-    ...BlurbTypography.subtitle,
+    fontSize: 19,
+    fontWeight: '400',
+    lineHeight: 26,
+    letterSpacing: -0.4,
     color: BlurbColors.textSecondary,
-    textAlign: 'center',
+    textAlign: 'left',
+    fontFamily: Platform.select({
+      ios: 'SF Pro Text',
+      android: 'sans-serif',
+      default: 'system-ui',
+    }),
+  },
+  qrWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
   },
   qrContainer: {
     backgroundColor: BlurbColors.qrBackground,
-    padding: 16,
-    borderRadius: 12,
+    padding: 40,
+    borderRadius: 32,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.2,
+    shadowRadius: 24,
+    elevation: 16,
   },
   loadingText: {
-    ...BlurbTypography.body,
+    fontSize: 16,
+    fontWeight: '400',
+    lineHeight: 22,
     color: BlurbColors.textSecondary,
     marginBottom: 16,
+    fontFamily: Platform.select({
+      ios: 'SF Pro Text',
+      android: 'sans-serif',
+      default: 'system-ui',
+    }),
   },
   backButtonFallback: {
     paddingVertical: 12,

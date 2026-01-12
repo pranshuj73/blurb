@@ -6,6 +6,7 @@ import {
   View,
   Alert,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Animated, {
@@ -23,7 +24,9 @@ import { EntryRow } from '@/components/entry/entry-row';
 import { BlurbColors } from '@/theme/colors';
 import { BlurbTypography } from '@/theme/typography';
 
-const PULL_THRESHOLD = 120;
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const PULL_THRESHOLD = 180;
+const TOP_PADDING_PERCENT = 0.25;
 
 export function EntriesList() {
   const [entries, setEntries] = useState<Entry[]>([]);
@@ -49,7 +52,10 @@ export function EntriesList() {
 
   const handleEntryPress = useCallback(
     (entry: Entry) => {
-      router.push(`/fullscreen-qr?id=${entry.id}`);
+      // Smooth transition
+      setTimeout(() => {
+        router.push(`/fullscreen-qr?id=${entry.id}`);
+      }, 50);
     },
     [router]
   );
@@ -62,7 +68,11 @@ export function EntriesList() {
         [
           {
             text: 'Edit',
-            onPress: () => router.push(`/add-entry?id=${entry.id}`),
+            onPress: () => {
+              setTimeout(() => {
+                router.push(`/add-entry?id=${entry.id}`);
+              }, 50);
+            },
           },
           {
             text: 'Share QR',
@@ -124,8 +134,10 @@ export function EntriesList() {
 
 
   const pullGesture = Gesture.Pan()
-    .activeOffsetY(10)
-    .failOffsetX([-30, 30])
+    .activeOffsetY(25)
+    .failOffsetX([-10, 10])
+    .minDistance(20)
+    .maxPointers(1)
     .onStart(() => {
       if (scrollOffset <= 0) {
         isPulling.value = true;
@@ -142,26 +154,33 @@ export function EntriesList() {
     })
     .onEnd((event) => {
       if (scrollOffset <= 0 && event.translationY > PULL_THRESHOLD) {
-        // Threshold crossed - navigate
+        // Threshold crossed - navigate smoothly
         pullDistance.value = withSpring(0, {
-          damping: 20,
-          stiffness: 100,
+          damping: 25,
+          stiffness: 200,
         });
         runOnJS(handleAddEntry)();
       } else {
-        // Below threshold - spring back
+        // Below threshold - spring back elegantly
         pullDistance.value = withSpring(0, {
-          damping: 15,
-          stiffness: 150,
+          damping: 20,
+          stiffness: 180,
         });
       }
+      isPulling.value = false;
+    })
+    .onFinalize(() => {
+      pullDistance.value = withSpring(0, {
+        damping: 20,
+        stiffness: 180,
+      });
       isPulling.value = false;
     });
 
   const indicatorOpacity = useAnimatedStyle(() => {
     const opacity = interpolate(
       pullDistance.value,
-      [0, 20, PULL_THRESHOLD],
+      [0, 30, PULL_THRESHOLD],
       [0, 0.3, 1],
       Extrapolation.CLAMP
     );
@@ -172,7 +191,7 @@ export function EntriesList() {
     const translateY = interpolate(
       pullDistance.value,
       [0, PULL_THRESHOLD],
-      [-40, 20],
+      [-60, 40],
       Extrapolation.CLAMP
     );
     return { transform: [{ translateY }] };
@@ -181,7 +200,7 @@ export function EntriesList() {
   const textOpacity = useAnimatedStyle(() => {
     const opacity = interpolate(
       pullDistance.value,
-      [40, PULL_THRESHOLD],
+      [60, PULL_THRESHOLD],
       [0, 1],
       Extrapolation.CLAMP
     );
@@ -231,9 +250,14 @@ export function EntriesList() {
           renderItem={renderEntry}
           keyExtractor={(item) => item.id}
           ListEmptyComponent={renderEmpty}
+          ListHeaderComponent={
+            <View style={[styles.header, { paddingTop: insets.top + SCREEN_HEIGHT * TOP_PADDING_PERCENT }]}>
+              <Text style={styles.brandText}>blurb.</Text>
+            </View>
+          }
           contentContainerStyle={[
             entries.length === 0 ? styles.emptyList : undefined,
-            { paddingTop: insets.top },
+            { paddingBottom: 24 },
           ]}
           scrollEnabled={true}
           onScroll={(event) => {
@@ -259,6 +283,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 32,
+    paddingTop: 80,
   },
   emptyTitle: {
     ...BlurbTypography.title,
@@ -296,5 +321,20 @@ const styles = StyleSheet.create({
     color: BlurbColors.text,
     letterSpacing: 2,
     fontWeight: '500',
+  },
+  header: {
+    paddingHorizontal: 16,
+    paddingBottom: 32,
+  },
+  brandText: {
+    fontSize: 24,
+    fontWeight: '300',
+    color: BlurbColors.text,
+    letterSpacing: -0.5,
+    fontFamily: Platform.select({
+      ios: 'SF Pro Display',
+      android: 'sans-serif-light',
+      default: 'system-ui',
+    }),
   },
 });

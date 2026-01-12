@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -10,6 +10,7 @@ import {
   Platform,
   ScrollView,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Animated, {
@@ -30,7 +31,7 @@ import { BlurbColors } from '@/theme/colors';
 import { BlurbTypography } from '@/theme/typography';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-const DISMISS_THRESHOLD = 100;
+const DISMISS_THRESHOLD = 180;
 
 export function AddEntry() {
   const router = useRouter();
@@ -38,9 +39,11 @@ export function AddEntry() {
   const isEditing = !!params.id;
   const insets = useSafeAreaInsets();
   
-  // Drawer animation
-  const drawerOffset = useSharedValue(0);
-  const chevronScale = useSharedValue(1);
+  // Drawer animation - start off-screen
+  const drawerOffset = useSharedValue(SCREEN_HEIGHT);
+  const pullDistance = useSharedValue(0);
+  const isPulling = useSharedValue(false);
+  const [scrollOffset, setScrollOffset] = useState(0);
 
   const [link, setLink] = useState('');
   const [title, setTitle] = useState('');
@@ -48,11 +51,17 @@ export function AddEntry() {
   const [iconUri, setIconUri] = useState<string | undefined>();
   const [isScraping, setIsScraping] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (isEditing && params.id) {
       loadEntry(params.id);
     }
+    return () => {
+      if (syncTimeoutRef.current) {
+        clearTimeout(syncTimeoutRef.current);
+      }
+    };
   }, [isEditing, params.id]);
 
   const loadEntry = async (id: string) => {
@@ -69,33 +78,45 @@ export function AddEntry() {
     }
   };
 
-  const handleLinkChange = useCallback(
-    async (text: string) => {
-      setLink(text);
-      
-      // Only auto-scrape if it looks like a URL and we're not editing
-      if (text.trim() && !isEditing && (text.startsWith('http://') || text.startsWith('https://'))) {
-        setIsScraping(true);
-        try {
-          const metadata = await scrapeMetadata(text);
-          if (metadata.title && !title) {
-            setTitle(metadata.title);
-          }
-          if (metadata.subtitle && !subtitle) {
-            setSubtitle(metadata.subtitle);
-          }
-          if (metadata.iconUrl && !iconUri) {
-            setIconUri(metadata.iconUrl);
-          }
-        } catch (error) {
-          console.error('Error scraping metadata:', error);
-        } finally {
-          setIsScraping(false);
-        }
+  const handleSyncMetadata = useCallback(async () => {
+    if (!link.trim() || !(link.startsWith('http://') || link.startsWith('https://'))) {
+      return;
+    }
+
+    setIsScraping(true);
+    
+    syncTimeoutRef.current = setTimeout(() => {
+      setIsScraping(false);
+      Alert.alert('Sync Failed', 'Failed to fetch link contents. Please try again.');
+    }, 5000);
+
+    try {
+      const metadata = await scrapeMetadata(link.trim());
+      if (syncTimeoutRef.current) {
+        clearTimeout(syncTimeoutRef.current);
+        syncTimeoutRef.current = null;
       }
-    },
-    [isEditing, title, subtitle, iconUri]
-  );
+      
+      if (metadata.title) {
+        setTitle(metadata.title);
+      }
+      if (metadata.subtitle) {
+        setSubtitle(metadata.subtitle);
+      }
+      if (metadata.iconUrl) {
+        setIconUri(metadata.iconUrl);
+      }
+    } catch (error) {
+      if (syncTimeoutRef.current) {
+        clearTimeout(syncTimeoutRef.current);
+        syncTimeoutRef.current = null;
+      }
+      console.error('Error scraping metadata:', error);
+      Alert.alert('Sync Failed', 'Failed to fetch link contents. Please try again.');
+    } finally {
+      setIsScraping(false);
+    }
+  }, [link]);
 
   const handlePickImage = async () => {
     try {
@@ -129,69 +150,138 @@ export function AddEntry() {
       updatedAt: Date.now(),
     };
 
-    router.push({
-      pathname: '/preview',
-      params: {
-        entry: JSON.stringify(entry),
-        isNew: isEditing ? 'false' : 'true',
-      },
+    // Animate out before navigation
+    drawerOffset.value = withSpring(SCREEN_HEIGHT, {
+      damping: 30,
+      stiffness: 300,
+      mass: 0.7,
     });
+    setTimeout(() => {
+      router.push({
+        pathname: '/preview',
+        params: {
+          entry: JSON.stringify(entry),
+          isNew: isEditing ? 'false' : 'true',
+        },
+      });
+    }, 200);
   };
 
   const canPreview = link.trim().length > 0 && title.trim().length > 0;
 
   const handleDismiss = useCallback(() => {
-    router.back();
-  }, [router]);
+    // Animate out
+    drawerOffset.value = withSpring(SCREEN_HEIGHT, {
+      damping: 30,
+      stiffness: 300,
+      mass: 0.7,
+    });
+    setTimeout(() => {
+      router.back();
+    }, 200);
+  }, [router, drawerOffset]);
 
-  const pullUpGesture = Gesture.Pan()
-    .activeOffsetY(-10)
+  const pullDownGesture = Gesture.Pan()
+    .activeOffsetY(10)
     .failOffsetX([-30, 30])
+    .onStart(() => {
+      if (scrollOffset <= 0) {
+        isPulling.value = true;
+      }
+    })
     .onChange((event) => {
-      if (event.translationY < 0) {
-        const distance = Math.abs(event.translationY);
-        drawerOffset.value = -distance;
-        chevronScale.value = interpolate(
-          distance,
-          [0, DISMISS_THRESHOLD],
-          [1, 0.8],
-          Extrapolation.CLAMP
-        );
+      if (scrollOffset <= 0 && event.translationY > 0) {
+        const distance = Math.min(event.translationY, DISMISS_THRESHOLD * 1.5);
+        pullDistance.value = distance;
+        drawerOffset.value = distance;
+      } else {
+        pullDistance.value = 0;
+        isPulling.value = false;
       }
     })
     .onEnd((event) => {
-      if (event.translationY < -DISMISS_THRESHOLD) {
-        // Threshold crossed - dismiss drawer
-        drawerOffset.value = withSpring(-SCREEN_HEIGHT, {
-          damping: 20,
-          stiffness: 100,
+      if (scrollOffset <= 0 && event.translationY > DISMISS_THRESHOLD) {
+        // Threshold crossed - dismiss drawer smoothly
+        drawerOffset.value = withSpring(SCREEN_HEIGHT, {
+          damping: 30,
+          stiffness: 300,
+          mass: 0.7,
         }, () => {
           runOnJS(handleDismiss)();
         });
+        pullDistance.value = withSpring(0, { damping: 25, stiffness: 200 });
       } else {
-        // Below threshold - spring back
+        // Below threshold - spring back elegantly
         drawerOffset.value = withSpring(0, {
-          damping: 15,
-          stiffness: 150,
+          damping: 28,
+          stiffness: 300,
+          mass: 0.7,
         });
-        chevronScale.value = withSpring(1, {
-          damping: 15,
-          stiffness: 150,
-        });
+        pullDistance.value = withSpring(0, { damping: 20, stiffness: 180 });
       }
+      isPulling.value = false;
     });
 
   const drawerStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      drawerOffset.value,
+      [0, SCREEN_HEIGHT],
+      [1, 0],
+      Extrapolation.CLAMP
+    );
+    const scale = interpolate(
+      drawerOffset.value,
+      [0, SCREEN_HEIGHT],
+      [1, 0.95],
+      Extrapolation.CLAMP
+    );
     return {
-      transform: [{ translateY: drawerOffset.value }],
+      transform: [
+        { translateY: drawerOffset.value },
+        { scale },
+      ],
+      opacity,
     };
   });
 
-  const chevronStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ scaleY: chevronScale.value }],
-    };
+  const indicatorOpacity = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      pullDistance.value,
+      [0, 30, DISMISS_THRESHOLD],
+      [0, 0.3, 1],
+      Extrapolation.CLAMP
+    );
+    return { opacity };
   });
+
+  const indicatorTranslateY = useAnimatedStyle(() => {
+    const translateY = interpolate(
+      pullDistance.value,
+      [0, DISMISS_THRESHOLD],
+      [-60, 40],
+      Extrapolation.CLAMP
+    );
+    return { transform: [{ translateY }] };
+  });
+
+  const textOpacity = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      pullDistance.value,
+      [60, DISMISS_THRESHOLD],
+      [0, 1],
+      Extrapolation.CLAMP
+    );
+    return { opacity };
+  });
+
+  // Animate in on mount with smooth spring
+  useEffect(() => {
+    drawerOffset.value = withSpring(0, {
+      damping: 28,
+      stiffness: 300,
+      mass: 0.7,
+    });
+  }, [drawerOffset]);
 
   return (
     <Animated.View style={[styles.drawerContainer, drawerStyle]}>
@@ -199,11 +289,22 @@ export function AddEntry() {
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-      >
+      <Animated.View style={[styles.pullIndicator, { paddingTop: insets.top + 8 }, indicatorOpacity, indicatorTranslateY]} pointerEvents="none">
+        <View style={styles.indicatorLine} />
+        <Animated.View style={[styles.indicatorText, textOpacity]}>
+          <Text style={styles.indicatorTextContent}>D I S M I S S</Text>
+        </Animated.View>
+      </Animated.View>
+      <GestureDetector gesture={pullDownGesture}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          onScroll={(event) => {
+            setScrollOffset(event.nativeEvent.contentOffset.y);
+          }}
+          scrollEventThrottle={16}
+        >
         <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <Text style={styles.backButtonText}>Cancel</Text>
@@ -217,20 +318,36 @@ export function AddEntry() {
         <View style={styles.form}>
           <View style={styles.field}>
             <Text style={styles.label}>URL</Text>
-            <TextInput
-              style={styles.input}
-              value={link}
-              onChangeText={handleLinkChange}
-              placeholder="https://..."
-              placeholderTextColor={BlurbColors.textTertiary}
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="url"
-              editable={!isScraping}
-            />
+            <View style={styles.urlInputContainer}>
+              <TextInput
+                style={[
+                  styles.input,
+                  styles.urlInput,
+                  isScraping && styles.inputDisabled,
+                ]}
+                value={link}
+                onChangeText={setLink}
+                placeholder="https://..."
+                placeholderTextColor={BlurbColors.textTertiary}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="url"
+                editable={!isScraping}
+              />
+              <TouchableOpacity
+                style={[styles.syncButton, isScraping && styles.syncButtonDisabled]}
+                onPress={handleSyncMetadata}
+                disabled={!link.trim() || isScraping}
+              >
+                {isScraping ? (
+                  <ActivityIndicator size="small" color={BlurbColors.text} />
+                ) : (
+                  <Text style={styles.syncButtonText}>↻</Text>
+                )}
+              </TouchableOpacity>
+            </View>
             {isScraping && (
               <View style={styles.scrapingIndicator}>
-                <ActivityIndicator size="small" color={BlurbColors.textSecondary} />
                 <Text style={styles.scrapingText}>Fetching metadata...</Text>
               </View>
             )}
@@ -308,16 +425,7 @@ export function AddEntry() {
             <Text style={styles.previewButtonText}>Preview</Text>
           )}
         </TouchableOpacity>
-      </ScrollView>
-      <GestureDetector gesture={pullUpGesture}>
-        <View style={[styles.chevronContainer, { paddingBottom: insets.bottom + 20 }]}>
-          <Animated.View style={[styles.chevron, chevronStyle]}>
-            <View style={styles.chevronUp}>
-              <View style={[styles.chevronLine, styles.chevronLeft]} />
-              <View style={[styles.chevronLine, styles.chevronRight]} />
-            </View>
-          </Animated.View>
-        </View>
+        </ScrollView>
       </GestureDetector>
     </KeyboardAvoidingView>
     </Animated.View>
@@ -332,6 +440,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: BlurbColors.backgroundElevated,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    overflow: 'hidden',
   },
   scrollView: {
     flex: 1,
@@ -370,6 +481,11 @@ const styles = StyleSheet.create({
     color: BlurbColors.textSecondary,
     marginBottom: 8,
   },
+  urlInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   input: {
     ...BlurbTypography.entryTitle,
     color: BlurbColors.text,
@@ -378,6 +494,30 @@ const styles = StyleSheet.create({
     padding: 12,
     borderWidth: 1,
     borderColor: BlurbColors.border,
+  },
+  urlInput: {
+    flex: 1,
+  },
+  inputDisabled: {
+    opacity: 0.6,
+  },
+  syncButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    backgroundColor: BlurbColors.backgroundElevated,
+    borderWidth: 1,
+    borderColor: BlurbColors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  syncButtonDisabled: {
+    opacity: 0.5,
+  },
+  syncButtonText: {
+    fontSize: 20,
+    color: BlurbColors.text,
+    fontWeight: '600',
   },
   scrapingIndicator: {
     flexDirection: 'row',
@@ -440,34 +580,35 @@ const styles = StyleSheet.create({
     ...BlurbTypography.entryTitle,
     color: BlurbColors.background,
   },
-  chevronContainer: {
+  pullIndicator: {
     position: 'absolute',
-    bottom: 20,
+    top: 0,
     left: 0,
     right: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
+    zIndex: 100,
   },
-  chevron: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  chevronUp: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  chevronLine: {
-    width: 12,
-    height: 2,
+  indicatorLine: {
+    width: 40,
+    height: 3,
     backgroundColor: BlurbColors.textTertiary,
-    position: 'absolute',
+    borderRadius: 2,
+    marginBottom: 12,
   },
-  chevronLeft: {
-    transform: [{ rotate: '45deg' }, { translateX: -4 }],
+  indicatorText: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  chevronRight: {
-    transform: [{ rotate: '-45deg' }, { translateX: 4 }],
+  indicatorTextContent: {
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 2,
+    color: BlurbColors.textTertiary,
+    fontFamily: Platform.select({
+      ios: 'SF Pro Text',
+      android: 'sans-serif-medium',
+      default: 'system-ui',
+    }),
   },
 });
