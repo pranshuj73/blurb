@@ -204,7 +204,7 @@ export function EntriesList() {
           ListHeaderComponent={
             entries.length > 0 ? (
               <View style={[styles.header, { paddingTop: insets.top + SCREEN_HEIGHT * TOP_PADDING_PERCENT }]}>
-                <Text style={styles.brandText}>blurb</Text>
+                <Text style={styles.brandText}>blurb.</Text>
               </View>
             ) : null
           }
