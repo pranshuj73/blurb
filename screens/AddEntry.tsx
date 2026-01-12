@@ -168,6 +168,49 @@ export function AddEntry() {
   };
 
   const canPreview = link.trim().length > 0 && title.trim().length > 0;
+  const canSave = link.trim().length > 0 && title.trim().length > 0;
+
+  const handleSave = useCallback(async () => {
+    if (!canSave || !params.id) {
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      const existingEntry = await storage.getEntry(params.id);
+      if (!existingEntry) {
+        Alert.alert('Error', 'Entry not found');
+        return;
+      }
+
+      const updatedEntry: Entry = {
+        ...existingEntry,
+        link: link.trim(),
+        title: title.trim(),
+        subtitle: subtitle.trim() || undefined,
+        iconUri,
+        updatedAt: Date.now(),
+      };
+
+      await storage.saveEntry(updatedEntry);
+
+      // Animate out
+      drawerOffset.value = withSpring(SCREEN_HEIGHT, {
+        damping: 30,
+        stiffness: 300,
+        mass: 0.7,
+      });
+      setTimeout(() => {
+        router.back();
+      }, 200);
+    } catch (error) {
+      console.error('Error saving entry:', error);
+      Alert.alert('Error', 'Failed to save entry. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [canSave, params.id, link, title, subtitle, iconUri, router, drawerOffset]);
 
   const handleDismiss = useCallback(() => {
     // Animate out
@@ -414,17 +457,31 @@ export function AddEntry() {
           </View>
         </View>
 
-        <TouchableOpacity
-          style={[styles.previewButton, !canPreview && styles.previewButtonDisabled]}
-          onPress={handlePreview}
-          disabled={!canPreview || isSaving}
-        >
-          {isSaving ? (
-            <ActivityIndicator color={BlurbColors.background} />
-          ) : (
-            <Text style={styles.previewButtonText}>Preview</Text>
-          )}
-        </TouchableOpacity>
+        {isEditing ? (
+          <TouchableOpacity
+            style={[styles.saveButton, !canSave && styles.saveButtonDisabled]}
+            onPress={handleSave}
+            disabled={!canSave || isSaving}
+          >
+            {isSaving ? (
+              <ActivityIndicator color={BlurbColors.background} />
+            ) : (
+              <Text style={styles.saveButtonText}>Save Changes</Text>
+            )}
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={[styles.previewButton, !canPreview && styles.previewButtonDisabled]}
+            onPress={handlePreview}
+            disabled={!canPreview || isSaving}
+          >
+            {isSaving ? (
+              <ActivityIndicator color={BlurbColors.background} />
+            ) : (
+              <Text style={styles.previewButtonText}>Preview</Text>
+            )}
+          </TouchableOpacity>
+        )}
         </ScrollView>
       </GestureDetector>
     </KeyboardAvoidingView>
@@ -577,6 +634,21 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   previewButtonText: {
+    ...BlurbTypography.entryTitle,
+    color: BlurbColors.background,
+  },
+  saveButton: {
+    backgroundColor: BlurbColors.text,
+    marginHorizontal: 16,
+    marginTop: 16,
+    paddingVertical: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  saveButtonDisabled: {
+    opacity: 0.5,
+  },
+  saveButtonText: {
     ...BlurbTypography.entryTitle,
     color: BlurbColors.background,
   },

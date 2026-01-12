@@ -1,28 +1,28 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import { Heading } from '@/components/ui/heading';
+import { Subheading } from '@/components/ui/subheading';
+import { Entry, storage } from '@/lib/storage';
+import { BlurbColors } from '@/theme/colors';
+import * as Brightness from 'expo-brightness';
+import { Image } from 'expo-image';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
+  Dimensions,
+  Platform,
+  StatusBar,
   StyleSheet,
   Text,
-  View,
   TouchableOpacity,
   TouchableWithoutFeedback,
-  StatusBar,
-  Platform,
-  Dimensions,
+  View,
 } from 'react-native';
+import QRCode from 'react-native-qrcode-svg';
 import Animated, {
-  useSharedValue,
   useAnimatedStyle,
+  useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Image } from 'expo-image';
-import QRCode from 'react-native-qrcode-svg';
-import * as Brightness from 'expo-brightness';
-import { Entry, storage } from '@/lib/storage';
-import { QR_CONFIG } from '@/lib/qr';
-import { BlurbColors } from '@/theme/colors';
-import { BlurbTypography } from '@/theme/typography';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -155,7 +155,11 @@ export function FullscreenQR() {
     );
   }
 
-  const qrSize = QR_CONFIG.getFullscreenSize();
+  // Calculate QR size to match header content width
+  const screenWidth = Dimensions.get('window').width;
+  const headerPadding = 32 * 2; // left + right padding (matches header)
+  const qrContainerPadding = 40 * 2; // left + right padding inside qrContainer
+  const qrSize = screenWidth - headerPadding - qrContainerPadding;
 
   return (
     <Animated.View style={[styles.container, screenStyle]}>
@@ -199,14 +203,12 @@ export function FullscreenQR() {
               />
             )}
             <View style={styles.titleSection}>
-              <Text style={styles.title}>{entry.title}</Text>
+              <Heading size="2xl" weight="600" style={styles.headingText}>{entry.title}</Heading>
               {entry.subtitle && (
-                <Text style={styles.subtitle}>{entry.subtitle}</Text>
+                <Subheading size="md" weight="600">{entry.subtitle}</Subheading>
               )}
             </View>
           </View>
-
-          <View style={styles.qrSpacer} />
 
           <View style={styles.qrWrapper}>
             <View style={styles.qrContainer}>
@@ -215,11 +217,6 @@ export function FullscreenQR() {
                 size={qrSize}
                 color={BlurbColors.qrForeground}
                 backgroundColor={BlurbColors.qrBackground}
-                errorCorrectionLevel={QR_CONFIG.errorCorrectionLevel}
-                logo={entry.iconUri ? { uri: entry.iconUri } : undefined}
-                logoSize={qrSize * 0.15}
-                logoBackgroundColor={BlurbColors.qrBackground}
-                logoMargin={4}
               />
             </View>
           </View>
@@ -278,55 +275,33 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 48,
+    alignItems: 'center',
+    marginBottom: 24,
     width: '100%',
-    paddingHorizontal: 32,
-  },
-  qrSpacer: {
-    height: 48,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
   icon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    marginRight: 16,
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    marginRight: 12,
   },
   titleSection: {
     flex: 1,
     alignItems: 'flex-start',
+    gap: 4,
   },
-  title: {
-    fontSize: 36,
-    fontWeight: '700',
-    lineHeight: 44,
-    letterSpacing: -1.2,
-    color: BlurbColors.text,
-    textAlign: 'left',
-    marginBottom: 8,
-    fontFamily: Platform.select({
-      ios: 'SF Pro Display',
-      android: 'sans-serif-medium',
-      default: 'system-ui',
-    }),
-  },
-  subtitle: {
-    fontSize: 19,
-    fontWeight: '400',
-    lineHeight: 26,
-    letterSpacing: -0.4,
-    color: BlurbColors.textSecondary,
-    textAlign: 'left',
-    fontFamily: Platform.select({
-      ios: 'SF Pro Text',
-      android: 'sans-serif',
-      default: 'system-ui',
-    }),
+  headingText: {
+    lineHeight: 40,
+    letterSpacing: 4,
+    marginLeft: -6,
   },
   qrWrapper: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 32,
+    width: '100%',
   },
   qrContainer: {
     backgroundColor: BlurbColors.qrBackground,
@@ -339,6 +314,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 24,
     elevation: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   loadingText: {
     fontSize: 16,

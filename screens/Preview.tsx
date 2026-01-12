@@ -12,7 +12,9 @@ import { Image } from 'expo-image';
 import { Entry, storage } from '@/lib/storage';
 import { QR_CONFIG } from '@/lib/qr';
 import { BlurbColors } from '@/theme/colors';
-import { BlurbTypography } from '@/theme/typography';
+import { Heading } from '@/components/ui/heading';
+import { Subheading } from '@/components/ui/subheading';
+import { Label } from '@/components/ui/label';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -91,29 +93,6 @@ export function Preview() {
     }, 200);
   };
 
-  const handleViewFullscreen = async () => {
-    // Animate out
-    screenOpacity.value = withSpring(0, {
-      damping: 30,
-      stiffness: 300,
-      mass: 0.7,
-    });
-    screenScale.value = withSpring(0.95, {
-      damping: 30,
-      stiffness: 300,
-      mass: 0.7,
-    });
-    
-    setTimeout(async () => {
-      if (!isNew) {
-        router.push(`/fullscreen-qr?id=${entry.id}`);
-      } else {
-        // Save first, then view
-        await storage.saveEntry(entry);
-        router.push(`/fullscreen-qr?id=${entry.id}`);
-      }
-    }, 200);
-  };
 
   const handleBack = () => {
     // Animate out
@@ -155,9 +134,9 @@ export function Preview() {
             />
           )}
           <View style={styles.titleSection}>
-            <Text style={styles.title}>{entry.title}</Text>
+            <Heading size="lg" weight="300">{entry.title}</Heading>
             {entry.subtitle && (
-              <Text style={styles.subtitle}>{entry.subtitle}</Text>
+              <Subheading size="md">{entry.subtitle}</Subheading>
             )}
           </View>
         </View>
@@ -172,10 +151,6 @@ export function Preview() {
               color={BlurbColors.qrForeground}
               backgroundColor={BlurbColors.qrBackground}
               errorCorrectionLevel={QR_CONFIG.errorCorrectionLevel}
-              logo={entry.iconUri ? { uri: entry.iconUri } : undefined}
-              logoSize={qrSize * 0.15}
-              logoBackgroundColor={BlurbColors.qrBackground}
-              logoMargin={4}
             />
           </View>
         </View>
@@ -183,26 +158,20 @@ export function Preview() {
         <View style={styles.divider} />
 
         <View style={styles.metadata}>
-          <Text style={styles.metadataLabel}>Link</Text>
+          <Label size="xs">Link</Label>
           <Text style={styles.metadataValue} selectable>
             {entry.link}
           </Text>
         </View>
       </View>
 
-      <View style={styles.actions}>
-        {isNew && (
+      {isNew && (
+        <View style={styles.actions}>
           <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
             <Text style={styles.saveButtonText}>Save Entry</Text>
           </TouchableOpacity>
-        )}
-        <TouchableOpacity
-          style={[styles.fullscreenButton, !isNew && styles.fullscreenButtonOnly]}
-          onPress={handleViewFullscreen}
-        >
-          <Text style={styles.fullscreenButtonText}>View Fullscreen</Text>
-        </TouchableOpacity>
-      </View>
+        </View>
+      )}
       </ScrollView>
     </Animated.View>
   );
@@ -279,31 +248,7 @@ const styles = StyleSheet.create({
   titleSection: {
     flex: 1,
     alignItems: 'flex-start',
-  },
-  title: {
-    fontSize: 30,
-    fontWeight: '700',
-    lineHeight: 38,
-    letterSpacing: -1,
-    color: BlurbColors.text,
-    marginBottom: 8,
-    fontFamily: Platform.select({
-      ios: 'SF Pro Display',
-      android: 'sans-serif-medium',
-      default: 'system-ui',
-    }),
-  },
-  subtitle: {
-    fontSize: 17,
-    fontWeight: '400',
-    lineHeight: 24,
-    letterSpacing: -0.3,
-    color: BlurbColors.textSecondary,
-    fontFamily: Platform.select({
-      ios: 'SF Pro Text',
-      android: 'sans-serif',
-      default: 'system-ui',
-    }),
+    gap: 4,
   },
   qrWrapper: {
     alignItems: 'center',
@@ -331,30 +276,17 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   metadata: {
-    gap: 8,
-  },
-  metadataLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: BlurbColors.textTertiary,
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
-    marginBottom: 8,
-    fontFamily: Platform.select({
-      ios: 'SF Pro Text',
-      android: 'sans-serif-medium',
-      default: 'system-ui',
-    }),
+    gap: 6,
   },
   metadataValue: {
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: '400',
-    lineHeight: 18,
-    color: BlurbColors.textSecondary,
+    lineHeight: 22,
+    color: BlurbColors.text,
     fontFamily: Platform.select({
-      ios: 'Menlo',
-      android: 'monospace',
-      default: 'monospace',
+      ios: 'SF Pro Text',
+      android: 'sans-serif',
+      default: 'system-ui',
     }),
   },
   actions: {
@@ -375,27 +307,6 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     letterSpacing: -0.2,
     color: BlurbColors.text,
-    fontFamily: Platform.select({
-      ios: 'SF Pro Display',
-      android: 'sans-serif-medium',
-      default: 'system-ui',
-    }),
-  },
-  fullscreenButton: {
-    backgroundColor: BlurbColors.text,
-    paddingVertical: 18,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  fullscreenButtonOnly: {
-    marginTop: 0,
-  },
-  fullscreenButtonText: {
-    fontSize: 17,
-    fontWeight: '600',
-    lineHeight: 24,
-    letterSpacing: -0.2,
-    color: BlurbColors.background,
     fontFamily: Platform.select({
       ios: 'SF Pro Display',
       android: 'sans-serif-medium',
