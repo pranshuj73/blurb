@@ -2,6 +2,7 @@ import { IconPicker } from '@/components/icon-picker';
 import { ThemedIcon } from '@/components/entry/themed-icon';
 import { scrapeMetadata } from '@/lib/scraping';
 import { Entry, storage } from '@/lib/storage';
+import { isSuspiciousUrl } from '@/lib/utils/url';
 import { BlurbColors } from '@/theme/colors';
 import { BlurbTypography } from '@/theme/typography';
 import * as Crypto from 'expo-crypto';
@@ -171,6 +172,30 @@ export function AddEntry() {
       return;
     }
 
+    // Security check for suspicious URLs
+    if (isSuspiciousUrl(link.trim())) {
+      Alert.alert(
+        'Suspicious URL Detected',
+        'This URL uses a potentially dangerous protocol (javascript:, data:, file:, vbscript:). Creating a QR code for this URL may pose security risks.\n\nAre you sure you want to continue?',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+          {
+            text: 'Continue Anyway',
+            style: 'destructive',
+            onPress: () => proceedWithPreview(),
+          },
+        ]
+      );
+      return;
+    }
+
+    proceedWithPreview();
+  }, [link, title, subtitle, iconUri, iconType, params.id, isEditing, drawerOffset, router]);
+
+  const proceedWithPreview = useCallback(() => {
     const entry: Entry = {
       id: params.id || Crypto.randomUUID(),
       link: link.trim(),
@@ -203,7 +228,7 @@ export function AddEntry() {
         }
       }
     );
-  }, [link, title, subtitle, iconUri, params.id, isEditing, drawerOffset, router]);
+  }, [link, title, subtitle, iconUri, iconType, params.id, isEditing, drawerOffset, router]);
 
   const canPreview = link.trim().length > 0 && title.trim().length > 0;
   const canSave = link.trim().length > 0 && title.trim().length > 0;
@@ -212,6 +237,32 @@ export function AddEntry() {
     if (!canSave || !params.id) {
       return;
     }
+
+    // Security check for suspicious URLs
+    if (isSuspiciousUrl(link.trim())) {
+      Alert.alert(
+        'Suspicious URL Detected',
+        'This URL uses a potentially dangerous protocol (javascript:, data:, file:, vbscript:). Saving this entry may pose security risks.\n\nAre you sure you want to continue?',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+          {
+            text: 'Save Anyway',
+            style: 'destructive',
+            onPress: () => proceedWithSave(),
+          },
+        ]
+      );
+      return;
+    }
+
+    proceedWithSave();
+  }, [canSave, params.id, link, title, subtitle, iconUri, iconType, router, drawerOffset]);
+
+  const proceedWithSave = useCallback(async () => {
+    if (!params.id) return;
 
     setIsSaving(true);
 
@@ -255,7 +306,7 @@ export function AddEntry() {
     } finally {
       setIsSaving(false);
     }
-  }, [canSave, params.id, link, title, subtitle, iconUri, router, drawerOffset]);
+  }, [params.id, link, title, subtitle, iconUri, iconType, router, drawerOffset]);
 
   const handleDelete = useCallback(async () => {
     if (!params.id) {

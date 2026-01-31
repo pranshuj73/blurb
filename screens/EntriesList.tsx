@@ -1,4 +1,5 @@
 import { EntryRow } from '@/components/entry/entry-row';
+import { EntryRowSkeleton } from '@/components/skeleton-loader';
 import { Entry, storage } from '@/lib/storage';
 import { BlurbColors } from '@/theme/colors';
 import { BlurbTypography } from '@/theme/typography';
@@ -28,18 +29,21 @@ const TOP_PADDING_PERCENT = 0.25;
 
 export function EntriesList() {
   const [entries, setEntries] = useState<Entry[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const flatListRef = useRef<FlatList>(null);
   const [scrollOffset, setScrollOffset] = useState(0);
   const insets = useSafeAreaInsets();
-  
+
   // Animation values
   const pullDistance = useSharedValue(0);
   const isPulling = useSharedValue(false);
 
   const loadEntries = useCallback(async () => {
+    setIsLoading(true);
     const loaded = await storage.getAllEntries();
     setEntries(loaded);
+    setIsLoading(false);
   }, []);
 
   useFocusEffect(
@@ -163,14 +167,25 @@ export function EntriesList() {
     [handleEntryPress, handleEntryLongPress]
   );
 
-  const renderEmpty = () => (
-    <View style={styles.emptyContainer}>
-      <Text style={styles.emptyTitle}>No entries yet</Text>
-      <Text style={styles.emptySubtitle}>
-        Pull down to add your first entry
-      </Text>
-    </View>
-  );
+  const renderEmpty = useCallback(() => {
+    if (isLoading) {
+      return (
+        <>
+          <EntryRowSkeleton />
+          <EntryRowSkeleton />
+          <EntryRowSkeleton />
+        </>
+      );
+    }
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyTitle}>No entries yet</Text>
+        <Text style={styles.emptySubtitle}>
+          Pull down to add your first entry
+        </Text>
+      </View>
+    );
+  }, [isLoading]);
 
   return (
     <View style={styles.container}>
