@@ -1,6 +1,7 @@
 import { Heading } from '@/components/ui/heading';
 import { Subheading } from '@/components/ui/subheading';
 import { Entry, storage } from '@/lib/storage';
+import { normalizeUrl } from '@/lib/utils/url';
 import { BlurbColors } from '@/theme/colors';
 import * as Brightness from 'expo-brightness';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -104,13 +105,9 @@ export function FullscreenQR() {
 
   const handleShare = useCallback(async () => {
     if (!entry?.link) return;
-    
-    // Normalize URL - add https:// if missing
-    let normalizedLink = entry.link.trim();
-    if (!normalizedLink.startsWith('http://') && !normalizedLink.startsWith('https://')) {
-      normalizedLink = `https://${normalizedLink}`;
-    }
-    
+
+    const normalizedLink = normalizeUrl(entry.link);
+
     try {
       const result = await Share.share({
         message: normalizedLink,
@@ -121,8 +118,9 @@ export function FullscreenQR() {
         // User shared successfully
         console.log('Shared successfully');
       }
-    } catch (error: any) {
-      console.error('Error sharing:', error?.message || error);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Error sharing:', message);
     }
   }, [entry]);
 

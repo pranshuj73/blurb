@@ -7,6 +7,7 @@ export interface Entry {
   subtitle?: string;
   link: string;
   iconUri?: string;
+  iconType?: 'image' | 'lucide'; // Type of icon: image URI or Lucide icon name
   createdAt: number;
   updatedAt: number;
   locked?: boolean;

@@ -1,9 +1,11 @@
 import { Image } from 'expo-image';
+import * as LucideIcons from 'lucide-react-native';
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 
 interface ThemedIconProps {
   uri: string;
+  iconType?: 'image' | 'lucide';
   size: number;
   borderRadius?: number;
   style?: any;
@@ -16,13 +18,33 @@ interface ThemedIconProps {
  * - Proper containment without cropping
  * - Consistent sizing
  */
-export function ThemedIcon({ uri, size, borderRadius, style }: ThemedIconProps) {
+export function ThemedIcon({ uri, iconType = 'image', size, borderRadius, style }: ThemedIconProps) {
   // Match the placeholder inner size (32px)
   const iconSize = 32;
   const padding = (size - iconSize) / 2;
   // Always make icons circular
   const finalBorderRadius = size / 2;
 
+  // If it's a Lucide icon, render the icon component
+  if (iconType === 'lucide') {
+    const IconComponent = (LucideIcons as any)[uri];
+    if (!IconComponent) {
+      // Fallback to default icon if not found
+      const FallbackIcon = LucideIcons.Link;
+      return (
+        <View style={[styles.container, { width: size, height: size, borderRadius: finalBorderRadius }, style]}>
+          <FallbackIcon size={iconSize} color="#000000" />
+        </View>
+      );
+    }
+    return (
+      <View style={[styles.container, { width: size, height: size, borderRadius: finalBorderRadius }, style]}>
+        <IconComponent size={iconSize} color="#000000" />
+      </View>
+    );
+  }
+
+  // Otherwise render image
   return (
     <View style={[styles.container, { width: size, height: size, borderRadius: finalBorderRadius }, style]}>
       <View style={[styles.imageWrapper, { padding }]}>

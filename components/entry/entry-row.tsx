@@ -22,7 +22,7 @@ export function EntryRow({ entry, onPress, onLongPress }: EntryRowProps) {
       <View style={styles.card}>
         <View style={styles.iconContainer}>
           {entry.iconUri ? (
-            <ThemedIcon uri={entry.iconUri} size={56} />
+            <ThemedIcon uri={entry.iconUri} iconType={entry.iconType} size={56} />
           ) : (
             <View style={styles.iconPlaceholder}>
               <View style={styles.iconPlaceholderInner} />

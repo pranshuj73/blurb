@@ -1,3 +1,4 @@
+import { IconPicker } from '@/components/icon-picker';
 import { ThemedIcon } from '@/components/entry/themed-icon';
 import { scrapeMetadata } from '@/lib/scraping';
 import { Entry, storage } from '@/lib/storage';
@@ -34,6 +35,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const DISMISS_THRESHOLD = 180;
 
+// Input validation constants
+const MAX_TITLE_LENGTH = 100;
+const MAX_SUBTITLE_LENGTH = 150;
+const MAX_URL_LENGTH = 2048; // Standard max URL length
+
 export function AddEntry() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id?: string }>();
@@ -50,9 +56,14 @@ export function AddEntry() {
   const [title, setTitle] = useState('');
   const [subtitle, setSubtitle] = useState('');
   const [iconUri, setIconUri] = useState<string | undefined>();
+  const [iconType, setIconType] = useState<'image' | 'lucide'>('image');
+  const [showIconPicker, setShowIconPicker] = useState(false);
   const [isScraping, setIsScraping] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<number>(0);
   const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const SYNC_COOLDOWN_MS = 2000; // 2 seconds between sync requests
 
   useEffect(() => {
     if (isEditing && params.id) {
@@ -73,6 +84,7 @@ export function AddEntry() {
         setTitle(entry.title);
         setSubtitle(entry.subtitle || '');
         setIconUri(entry.iconUri);
+        setIconType(entry.iconType || 'image');
       }
     } catch (error) {
       console.error('Error loading entry:', error);
@@ -84,6 +96,16 @@ export function AddEntry() {
       return;
     }
 
+    // Rate limiting: Check if cooldown period has passed
+    const now = Date.now();
+    const timeSinceLastSync = now - lastSyncTime;
+    if (timeSinceLastSync < SYNC_COOLDOWN_MS) {
+      const remainingSeconds = Math.ceil((SYNC_COOLDOWN_MS - timeSinceLastSync) / 1000);
+      Alert.alert('Please Wait', `Please wait ${remainingSeconds} second${remainingSeconds > 1 ? 's' : ''} before syncing again.`);
+      return;
+    }
+
+    setLastSyncTime(now);
     setIsScraping(true);
 
     syncTimeoutRef.current = setTimeout(() => {
@@ -106,6 +128,7 @@ export function AddEntry() {
       }
       if (metadata.iconUrl) {
         setIconUri(metadata.iconUrl);
+        setIconType('image'); // Favicon is an image
       }
     } catch (error) {
       console.error('Error scraping metadata:', error);
@@ -118,7 +141,7 @@ export function AddEntry() {
       }
       setIsScraping(false);
     }
-  }, [link]);
+  }, [link, lastSyncTime]);
 
   const handlePickImage = async () => {
     try {
@@ -131,10 +154,16 @@ export function AddEntry() {
 
       if (!result.canceled && result.assets[0]) {
         setIconUri(result.assets[0].uri);
+        setIconType('image');
       }
     } catch (error) {
       console.error('Error picking image:', error);
     }
+  };
+
+  const handleSelectLucideIcon = (iconName: string) => {
+    setIconUri(iconName);
+    setIconType('lucide');
   };
 
   const handlePreview = useCallback(() => {
@@ -148,6 +177,7 @@ export function AddEntry() {
       title: title.trim(),
       subtitle: subtitle.trim() || undefined,
       iconUri,
+      iconType,
       createdAt: params.id ? Date.now() : Date.now(), // Will be set properly on save
       updatedAt: Date.now(),
     };
@@ -198,6 +228,7 @@ export function AddEntry() {
         title: title.trim(),
         subtitle: subtitle.trim() || undefined,
         iconUri,
+        iconType,
         updatedAt: Date.now(),
       };
 
@@ -441,13 +472,14 @@ export function AddEntry() {
                   isScraping && styles.inputDisabled,
                 ]}
                 value={link}
-                onChangeText={setLink}
+                onChangeText={(text) => setLink(text.slice(0, MAX_URL_LENGTH))}
                 placeholder="https://..."
                 placeholderTextColor={BlurbColors.textTertiary}
                 autoCapitalize="none"
                 autoCorrect={false}
                 keyboardType="url"
                 editable={!isScraping}
+                maxLength={MAX_URL_LENGTH}
               />
               <TouchableOpacity
                 style={[styles.syncButton, isScraping && styles.syncButtonDisabled]}
@@ -469,26 +501,34 @@ export function AddEntry() {
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>Title</Text>
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>Title</Text>
+              <Text style={styles.charCount}>{title.length}/{MAX_TITLE_LENGTH}</Text>
+            </View>
             <TextInput
               style={styles.input}
               value={title}
-              onChangeText={setTitle}
+              onChangeText={(text) => setTitle(text.slice(0, MAX_TITLE_LENGTH))}
               placeholder="Entry title"
               placeholderTextColor={BlurbColors.textTertiary}
               autoCapitalize="words"
+              maxLength={MAX_TITLE_LENGTH}
             />
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>Subtitle (optional)</Text>
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>Subtitle (optional)</Text>
+              <Text style={styles.charCount}>{subtitle.length}/{MAX_SUBTITLE_LENGTH}</Text>
+            </View>
             <TextInput
               style={styles.input}
               value={subtitle}
-              onChangeText={setSubtitle}
+              onChangeText={(text) => setSubtitle(text.slice(0, MAX_SUBTITLE_LENGTH))}
               placeholder="Subtitle or handle"
               placeholderTextColor={BlurbColors.textTertiary}
               autoCapitalize="none"
+              maxLength={MAX_SUBTITLE_LENGTH}
             />
           </View>
 
@@ -496,31 +536,44 @@ export function AddEntry() {
             <Text style={styles.label}>Icon</Text>
             <View style={styles.iconSection}>
               {iconUri && (
-                <ThemedIcon uri={iconUri} size={64} />
+                <ThemedIcon uri={iconUri} iconType={iconType} size={64} />
               )}
               {!iconUri && (
                 <View style={[styles.iconPlaceholder, { width: 64, height: 64, borderRadius: 8 }]}>
                   <Text style={styles.iconPlaceholderText}>No icon</Text>
                 </View>
               )}
-              <TouchableOpacity
-                style={styles.iconButton}
-                onPress={handlePickImage}
-              >
-                <Text style={styles.iconButtonText}>
-                  {iconUri ? 'Change' : 'Add'} Icon
-                </Text>
-              </TouchableOpacity>
-              {iconUri && (
+              <View style={styles.iconButtonsColumn}>
                 <TouchableOpacity
                   style={styles.iconButton}
-                  onPress={() => setIconUri(undefined)}
+                  onPress={handlePickImage}
                 >
-                  <Text style={[styles.iconButtonText, styles.removeButtonText]}>
-                    Remove
+                  <Text style={styles.iconButtonText}>
+                    {iconUri ? 'Upload' : 'Upload'} Image
                   </Text>
                 </TouchableOpacity>
-              )}
+                <TouchableOpacity
+                  style={styles.iconButton}
+                  onPress={() => setShowIconPicker(true)}
+                >
+                  <Text style={styles.iconButtonText}>
+                    Pick Icon
+                  </Text>
+                </TouchableOpacity>
+                {iconUri && (
+                  <TouchableOpacity
+                    style={styles.iconButton}
+                    onPress={() => {
+                      setIconUri(undefined);
+                      setIconType('image');
+                    }}
+                  >
+                    <Text style={[styles.iconButtonText, styles.removeButtonText]}>
+                      Remove
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
           </View>
         </View>
@@ -562,6 +615,11 @@ export function AddEntry() {
         </ScrollView>
       </GestureDetector>
     </KeyboardAvoidingView>
+    <IconPicker
+      visible={showIconPicker}
+      onClose={() => setShowIconPicker(false)}
+      onSelectIcon={handleSelectLucideIcon}
+    />
     </Animated.View>
   );
 }
@@ -610,10 +668,20 @@ const styles = StyleSheet.create({
   field: {
     marginBottom: 24,
   },
+  labelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   label: {
     ...BlurbTypography.body,
     color: BlurbColors.textSecondary,
-    marginBottom: 8,
+  },
+  charCount: {
+    ...BlurbTypography.small,
+    color: BlurbColors.textTertiary,
+    fontSize: 12,
   },
   urlInputContainer: {
     flexDirection: 'row',
@@ -665,8 +733,12 @@ const styles = StyleSheet.create({
   },
   iconSection: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+    alignItems: 'flex-start',
+    gap: 16,
+  },
+  iconButtonsColumn: {
+    flex: 1,
+    gap: 8,
   },
   iconPlaceholder: {
     justifyContent: 'center',
