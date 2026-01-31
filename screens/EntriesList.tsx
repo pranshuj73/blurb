@@ -54,20 +54,14 @@ export function EntriesList() {
 
   const handleEntryPress = useCallback(
     (entry: Entry) => {
-      // Smooth transition
-      setTimeout(() => {
-        router.push(`/fullscreen-qr?id=${entry.id}`);
-      }, 50);
+      router.push(`/fullscreen-qr?id=${entry.id}`);
     },
     [router]
   );
 
   const handleEntryLongPress = useCallback(
     (entry: Entry) => {
-      // Navigate directly to edit page
-      setTimeout(() => {
-        router.push(`/add-entry?id=${entry.id}`);
-      }, 50);
+      router.push(`/add-entry?id=${entry.id}`);
     },
     [router]
   );

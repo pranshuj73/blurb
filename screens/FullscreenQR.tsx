@@ -127,25 +127,31 @@ export function FullscreenQR() {
   }, [entry]);
 
   const handleClose = useCallback(() => {
+    // Restore brightness before closing
+    if (maxBrightness && originalBrightness !== null) {
+      Brightness.setBrightnessAsync(originalBrightness);
+    }
+
     // Animate out
-    screenOpacity.value = withSpring(0, {
-      damping: 30,
-      stiffness: 300,
-      mass: 0.7,
-    });
+    screenOpacity.value = withSpring(
+      0,
+      {
+        damping: 30,
+        stiffness: 300,
+        mass: 0.7,
+      },
+      (finished) => {
+        'worklet';
+        if (finished) {
+          runOnJS(router.back)();
+        }
+      }
+    );
     screenScale.value = withSpring(0.95, {
       damping: 30,
       stiffness: 300,
       mass: 0.7,
     });
-    
-    if (maxBrightness && originalBrightness !== null) {
-      Brightness.setBrightnessAsync(originalBrightness);
-    }
-    
-    setTimeout(() => {
-      router.back();
-    }, 200);
   }, [router, maxBrightness, originalBrightness, screenOpacity, screenScale]);
 
   if (!entry) {

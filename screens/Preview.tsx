@@ -10,6 +10,7 @@ import React, { useEffect, useMemo } from 'react';
 import { Dimensions, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import Animated, {
+    runOnJS,
     useAnimatedStyle,
     useSharedValue,
     withSpring,
@@ -76,39 +77,55 @@ export function Preview() {
   }
 
   const handleSave = async () => {
+    const saveAndNavigate = async () => {
+      await storage.saveEntry(entry);
+      router.replace('/');
+    };
+
     // Animate out
-    screenOpacity.value = withSpring(0, {
-      damping: 30,
-      stiffness: 300,
-      mass: 0.7,
-    });
+    screenOpacity.value = withSpring(
+      0,
+      {
+        damping: 30,
+        stiffness: 300,
+        mass: 0.7,
+      },
+      (finished) => {
+        'worklet';
+        if (finished) {
+          runOnJS(saveAndNavigate)();
+        }
+      }
+    );
     screenScale.value = withSpring(0.95, {
       damping: 30,
       stiffness: 300,
       mass: 0.7,
     });
-    setTimeout(async () => {
-      await storage.saveEntry(entry);
-      router.replace('/');
-    }, 200);
   };
 
 
   const handleBack = () => {
     // Animate out
-    screenOpacity.value = withSpring(0, {
-      damping: 30,
-      stiffness: 300,
-      mass: 0.7,
-    });
+    screenOpacity.value = withSpring(
+      0,
+      {
+        damping: 30,
+        stiffness: 300,
+        mass: 0.7,
+      },
+      (finished) => {
+        'worklet';
+        if (finished) {
+          runOnJS(router.back)();
+        }
+      }
+    );
     screenScale.value = withSpring(0.95, {
       damping: 30,
       stiffness: 300,
       mass: 0.7,
     });
-    setTimeout(() => {
-      router.back();
-    }, 200);
   };
 
   const qrSize = QR_CONFIG.getSize();

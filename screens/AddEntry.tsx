@@ -3,6 +3,7 @@ import { scrapeMetadata } from '@/lib/scraping';
 import { Entry, storage } from '@/lib/storage';
 import { BlurbColors } from '@/theme/colors';
 import { BlurbTypography } from '@/theme/typography';
+import * as Crypto from 'expo-crypto';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -84,19 +85,19 @@ export function AddEntry() {
     }
 
     setIsScraping(true);
-    
+
     syncTimeoutRef.current = setTimeout(() => {
+      if (syncTimeoutRef.current) {
+        clearTimeout(syncTimeoutRef.current);
+        syncTimeoutRef.current = null;
+      }
       setIsScraping(false);
       Alert.alert('Sync Failed', 'Failed to fetch link contents. Please try again.');
     }, 5000);
 
     try {
       const metadata = await scrapeMetadata(link.trim());
-      if (syncTimeoutRef.current) {
-        clearTimeout(syncTimeoutRef.current);
-        syncTimeoutRef.current = null;
-      }
-      
+
       if (metadata.title) {
         setTitle(metadata.title);
       }
@@ -107,13 +108,14 @@ export function AddEntry() {
         setIconUri(metadata.iconUrl);
       }
     } catch (error) {
+      console.error('Error scraping metadata:', error);
+      Alert.alert('Sync Failed', 'Failed to fetch link contents. Please try again.');
+    } finally {
+      // Always clear timeout and reset state
       if (syncTimeoutRef.current) {
         clearTimeout(syncTimeoutRef.current);
         syncTimeoutRef.current = null;
       }
-      console.error('Error scraping metadata:', error);
-      Alert.alert('Sync Failed', 'Failed to fetch link contents. Please try again.');
-    } finally {
       setIsScraping(false);
     }
   }, [link]);
@@ -135,13 +137,13 @@ export function AddEntry() {
     }
   };
 
-  const handlePreview = () => {
+  const handlePreview = useCallback(() => {
     if (!link.trim() || !title.trim()) {
       return;
     }
 
     const entry: Entry = {
-      id: params.id || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: params.id || Crypto.randomUUID(),
       link: link.trim(),
       title: title.trim(),
       subtitle: subtitle.trim() || undefined,
@@ -151,21 +153,27 @@ export function AddEntry() {
     };
 
     // Animate out before navigation
-    drawerOffset.value = withSpring(SCREEN_HEIGHT, {
-      damping: 30,
-      stiffness: 300,
-      mass: 0.7,
-    });
-    setTimeout(() => {
-      router.push({
-        pathname: '/preview',
-        params: {
-          entry: JSON.stringify(entry),
-          isNew: isEditing ? 'false' : 'true',
-        },
-      });
-    }, 200);
-  };
+    drawerOffset.value = withSpring(
+      SCREEN_HEIGHT,
+      {
+        damping: 30,
+        stiffness: 300,
+        mass: 0.7,
+      },
+      (finished) => {
+        'worklet';
+        if (finished) {
+          runOnJS(router.push)({
+            pathname: '/preview',
+            params: {
+              entry: JSON.stringify(entry),
+              isNew: isEditing ? 'false' : 'true',
+            },
+          });
+        }
+      }
+    );
+  }, [link, title, subtitle, iconUri, params.id, isEditing, drawerOffset, router]);
 
   const canPreview = link.trim().length > 0 && title.trim().length > 0;
   const canSave = link.trim().length > 0 && title.trim().length > 0;
@@ -196,14 +204,20 @@ export function AddEntry() {
       await storage.saveEntry(updatedEntry);
 
       // Animate out
-      drawerOffset.value = withSpring(SCREEN_HEIGHT, {
-        damping: 30,
-        stiffness: 300,
-        mass: 0.7,
-      });
-      setTimeout(() => {
-        router.back();
-      }, 200);
+      drawerOffset.value = withSpring(
+        SCREEN_HEIGHT,
+        {
+          damping: 30,
+          stiffness: 300,
+          mass: 0.7,
+        },
+        (finished) => {
+          'worklet';
+          if (finished) {
+            runOnJS(router.back)();
+          }
+        }
+      );
     } catch (error) {
       console.error('Error saving entry:', error);
       Alert.alert('Error', 'Failed to save entry. Please try again.');
@@ -231,16 +245,22 @@ export function AddEntry() {
           onPress: async () => {
             try {
               await storage.deleteEntry(params.id!);
-              
+
               // Animate out
-              drawerOffset.value = withSpring(SCREEN_HEIGHT, {
-                damping: 30,
-                stiffness: 300,
-                mass: 0.7,
-              });
-              setTimeout(() => {
-                router.back();
-              }, 200);
+              drawerOffset.value = withSpring(
+                SCREEN_HEIGHT,
+                {
+                  damping: 30,
+                  stiffness: 300,
+                  mass: 0.7,
+                },
+                (finished) => {
+                  'worklet';
+                  if (finished) {
+                    runOnJS(router.back)();
+                  }
+                }
+              );
             } catch (error) {
               console.error('Error deleting entry:', error);
               Alert.alert('Error', 'Failed to delete entry. Please try again.');
@@ -253,14 +273,20 @@ export function AddEntry() {
 
   const handleDismiss = useCallback(() => {
     // Animate out
-    drawerOffset.value = withSpring(SCREEN_HEIGHT, {
-      damping: 30,
-      stiffness: 300,
-      mass: 0.7,
-    });
-    setTimeout(() => {
-      router.back();
-    }, 200);
+    drawerOffset.value = withSpring(
+      SCREEN_HEIGHT,
+      {
+        damping: 30,
+        stiffness: 300,
+        mass: 0.7,
+      },
+      (finished) => {
+        'worklet';
+        if (finished) {
+          runOnJS(router.back)();
+        }
+      }
+    );
   }, [router, drawerOffset]);
 
   const pullDownGesture = Gesture.Pan()
@@ -284,13 +310,20 @@ export function AddEntry() {
     .onEnd((event) => {
       if (scrollOffset <= 0 && event.translationY > DISMISS_THRESHOLD) {
         // Threshold crossed - dismiss drawer smoothly
-        drawerOffset.value = withSpring(SCREEN_HEIGHT, {
-          damping: 30,
-          stiffness: 300,
-          mass: 0.7,
-        }, () => {
-          runOnJS(handleDismiss)();
-        });
+        drawerOffset.value = withSpring(
+          SCREEN_HEIGHT,
+          {
+            damping: 30,
+            stiffness: 300,
+            mass: 0.7,
+          },
+          (finished) => {
+            'worklet';
+            if (finished) {
+              runOnJS(router.back)();
+            }
+          }
+        );
         pullDistance.value = withSpring(0, { damping: 25, stiffness: 200 });
       } else {
         // Below threshold - spring back elegantly

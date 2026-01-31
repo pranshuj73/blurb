@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Crypto from 'expo-crypto';
 
 export interface Entry {
   id: string;
@@ -15,16 +16,33 @@ export interface Entry {
 
 const STORAGE_KEY = '@blurb:entries';
 
+/**
+ * Queue to prevent race conditions on concurrent storage operations
+ */
+class StorageQueue {
+  private queue: Promise<any> = Promise.resolve();
+
+  async enqueue<T>(operation: () => Promise<T>): Promise<T> {
+    const promise = this.queue.then(operation, operation);
+    this.queue = promise.catch(() => {}); // Prevent unhandled rejections from blocking queue
+    return promise;
+  }
+}
+
+const storageQueue = new StorageQueue();
+
 export const storage = {
   async getAllEntries(): Promise<Entry[]> {
-    try {
-      const data = await AsyncStorage.getItem(STORAGE_KEY);
-      if (!data) return [];
-      return JSON.parse(data);
-    } catch (error) {
-      console.error('Error loading entries:', error);
-      return [];
-    }
+    return storageQueue.enqueue(async () => {
+      try {
+        const data = await AsyncStorage.getItem(STORAGE_KEY);
+        if (!data) return [];
+        return JSON.parse(data);
+      } catch (error) {
+        console.error('Error loading entries:', error);
+        return [];
+      }
+    });
   },
 
   async getEntry(id: string): Promise<Entry | null> {
@@ -33,22 +51,28 @@ export const storage = {
   },
 
   async saveEntry(entry: Entry): Promise<void> {
-    const entries = await storage.getAllEntries();
-    const index = entries.findIndex((e) => e.id === entry.id);
-    
-    if (index >= 0) {
-      entries[index] = { ...entry, updatedAt: Date.now() };
-    } else {
-      entries.push({ ...entry, createdAt: Date.now(), updatedAt: Date.now() });
-    }
+    return storageQueue.enqueue(async () => {
+      const data = await AsyncStorage.getItem(STORAGE_KEY);
+      const entries: Entry[] = data ? JSON.parse(data) : [];
+      const index = entries.findIndex((e) => e.id === entry.id);
 
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+      if (index >= 0) {
+        entries[index] = { ...entry, updatedAt: Date.now() };
+      } else {
+        entries.push({ ...entry, createdAt: Date.now(), updatedAt: Date.now() });
+      }
+
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+    });
   },
 
   async deleteEntry(id: string): Promise<void> {
-    const entries = await storage.getAllEntries();
-    const filtered = entries.filter((e) => e.id !== id);
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+    return storageQueue.enqueue(async () => {
+      const data = await AsyncStorage.getItem(STORAGE_KEY);
+      const entries: Entry[] = data ? JSON.parse(data) : [];
+      const filtered = entries.filter((e) => e.id !== id);
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+    });
   },
 
   async duplicateEntry(id: string): Promise<Entry | null> {
@@ -57,7 +81,7 @@ export const storage = {
 
     const duplicated: Entry = {
       ...entry,
-      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: Crypto.randomUUID(),
       title: `${entry.title} (Copy)`,
       createdAt: Date.now(),
       updatedAt: Date.now(),

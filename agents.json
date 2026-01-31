@@ -1,0 +1,12 @@
+{
+  "agents": [
+    "claude-code",
+    "cursor"
+  ],
+  "scope": "project",
+  "skills": {
+    "vercel-react-native-skills": "vercel-labs/agent-skills",
+    "react-native-best-practices": "callstackincubator/agent-skills",
+    "building-native-ui": "expo/skills"
+  }
+}
