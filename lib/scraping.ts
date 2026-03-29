@@ -1,10 +1,12 @@
 import 'react-native-url-polyfill/auto';
 import { normalizeUrl } from './utils/url';
+import { getAccentColorFromFavicon } from './utils/favicon-color';
 
 export interface ScrapedMetadata {
   title: string;
   subtitle?: string;
   iconUrl?: string;
+  accentColor?: string;
 }
 
 // Multiple favicon API fallbacks for reliability
@@ -26,17 +28,20 @@ export async function scrapeMetadata(url: string): Promise<ScrapedMetadata> {
 
     // Use first favicon API (Google) as primary, others as fallbacks
     const iconUrl = FAVICON_APIS[0](domain);
+    const accentColor = await getAccentColorFromFavicon(iconUrl, domain);
 
     return {
       title: siteName,
       subtitle: undefined,
       iconUrl,
+      accentColor,
     };
   } catch {
     return {
       title: 'Website',
       subtitle: undefined,
       iconUrl: undefined,
+      accentColor: undefined,
     };
   }
 }

@@ -211,16 +211,20 @@ export function EntriesList() {
           keyExtractor={(item) => item.id}
           ListEmptyComponent={renderEmpty}
           ListHeaderComponent={
-            entries.length > 0 ? (
-              <View style={[styles.header, { paddingTop: insets.top + SCREEN_HEIGHT * TOP_PADDING_PERCENT }]}>
-                <Text style={styles.brandText}>blurb.</Text>
+            <View style={[styles.header, { paddingTop: insets.top + SCREEN_HEIGHT * TOP_PADDING_PERCENT }]}>
+              <View style={styles.brandRow}>
+                <Text style={styles.brandText}>blurb</Text>
+                <Text style={styles.brandDot}>.</Text>
               </View>
-            ) : null
+              <View style={styles.headerDivider} />
+            </View>
           }
           contentContainerStyle={[
+            styles.listContent,
             entries.length === 0 ? styles.emptyList : undefined,
             { paddingBottom: 24 },
           ]}
+          ListFooterComponent={<View style={styles.listFooter} />}
           scrollEnabled={true}
           onScroll={(event) => {
             setScrollOffset(event.nativeEvent.contentOffset.y);
@@ -239,8 +243,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: BlurbColors.background,
   },
+  listContent: {
+    flexGrow: 1,
+  },
   emptyList: {
     flexGrow: 1,
+  },
+  listFooter: {
+    height: 80,
   },
   emptyContainer: {
     flex: 1,
@@ -287,14 +297,31 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   header: {
-    paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingHorizontal: 24,
+    paddingBottom: 16,
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
   },
   brandText: {
-    fontSize: 24,
-    fontWeight: '600',
+    fontSize: 34,
+    fontWeight: '700',
     color: BlurbColors.text,
-    letterSpacing: -0.5,
+    letterSpacing: -0.8,
     fontFamily: 'Manrope',
+  },
+  brandDot: {
+    fontSize: 34,
+    fontWeight: '700',
+    color: BlurbColors.textSecondary,
+    marginLeft: 2,
+    lineHeight: 38,
+    fontFamily: 'Manrope',
+  },
+  headerDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: BlurbColors.border,
+    marginTop: 16,
   },
 });

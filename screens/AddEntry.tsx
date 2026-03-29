@@ -58,6 +58,7 @@ export function AddEntry() {
   const [subtitle, setSubtitle] = useState('');
   const [iconUri, setIconUri] = useState<string | undefined>();
   const [iconType, setIconType] = useState<'image' | 'lucide'>('image');
+  const [accentColor, setAccentColor] = useState<string | undefined>();
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [isScraping, setIsScraping] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -86,6 +87,7 @@ export function AddEntry() {
         setSubtitle(entry.subtitle || '');
         setIconUri(entry.iconUri);
         setIconType(entry.iconType || 'image');
+        setAccentColor(entry.accentColor);
       }
     } catch (error) {
       console.error('Error loading entry:', error);
@@ -130,6 +132,9 @@ export function AddEntry() {
       if (metadata.iconUrl) {
         setIconUri(metadata.iconUrl);
         setIconType('image'); // Favicon is an image
+      }
+      if (metadata.accentColor) {
+        setAccentColor(metadata.accentColor);
       }
     } catch (error) {
       console.error('Error scraping metadata:', error);
@@ -213,6 +218,7 @@ export function AddEntry() {
       subtitle: subtitle.trim() || undefined,
       iconUri,
       iconType,
+      accentColor,
       createdAt: params.id ? Date.now() : Date.now(), // Will be set properly on save
       updatedAt: Date.now(),
     };
@@ -300,6 +306,7 @@ export function AddEntry() {
         subtitle: subtitle.trim() || undefined,
         iconUri,
         iconType,
+        accentColor,
         updatedAt: Date.now(),
       };
 

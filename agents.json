@@ -5,8 +5,13 @@
   ],
   "scope": "project",
   "skills": {
-    "vercel-react-native-skills": "vercel-labs/agent-skills",
+    "building-native-ui": "expo/skills",
     "react-native-best-practices": "callstackincubator/agent-skills",
-    "building-native-ui": "expo/skills"
+    "vercel-react-native-skills": "vercel-labs/agent-skills",
+    "vercel-react-best-practices": "vercel-labs/agent-skills",
+    "web-design-guidelines": "vercel-labs/agent-skills",
+    "building-ui": "expo/skills",
+    "frontend-design": "anthropics/skills",
+    "data-fetching": "expo/skills"
   }
 }
