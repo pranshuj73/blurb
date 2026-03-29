@@ -3,6 +3,7 @@ import { Subheading } from '@/components/ui/subheading';
 import { Entry, storage } from '@/lib/storage';
 import { normalizeUrl } from '@/lib/utils/url';
 import { BlurbColors } from '@/theme/colors';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Brightness from 'expo-brightness';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -26,6 +27,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const BRIGHTNESS_BACKUP_KEY = '@blurb:brightness_backup';
 
 export function FullscreenQR() {
   const router = useRouter();
@@ -88,6 +90,8 @@ export function FullscreenQR() {
         // Save current brightness and set to max
         const current = await Brightness.getBrightnessAsync();
         setOriginalBrightness(current);
+        // Backup to AsyncStorage in case of crash
+        await AsyncStorage.setItem(BRIGHTNESS_BACKUP_KEY, current.toString());
         await Brightness.setBrightnessAsync(1.0);
         setMaxBrightness(true);
       } else {
@@ -95,6 +99,8 @@ export function FullscreenQR() {
         if (originalBrightness !== null) {
           await Brightness.setBrightnessAsync(originalBrightness);
         }
+        // Clear backup
+        await AsyncStorage.removeItem(BRIGHTNESS_BACKUP_KEY);
         setMaxBrightness(false);
         setOriginalBrightness(null);
       }
@@ -124,10 +130,12 @@ export function FullscreenQR() {
     }
   }, [entry]);
 
-  const handleClose = useCallback(() => {
+  const handleClose = useCallback(async () => {
     // Restore brightness before closing
     if (maxBrightness && originalBrightness !== null) {
-      Brightness.setBrightnessAsync(originalBrightness);
+      await Brightness.setBrightnessAsync(originalBrightness);
+      // Clear backup
+      await AsyncStorage.removeItem(BRIGHTNESS_BACKUP_KEY);
     }
 
     // Animate out

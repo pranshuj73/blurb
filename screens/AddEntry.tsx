@@ -2,7 +2,7 @@ import { IconPicker } from '@/components/icon-picker';
 import { ThemedIcon } from '@/components/entry/themed-icon';
 import { scrapeMetadata } from '@/lib/scraping';
 import { Entry, storage } from '@/lib/storage';
-import { isSuspiciousUrl } from '@/lib/utils/url';
+import { isSuspiciousUrl, isValidUrl } from '@/lib/utils/url';
 import { BlurbColors } from '@/theme/colors';
 import { BlurbTypography } from '@/theme/typography';
 import * as Crypto from 'expo-crypto';
@@ -172,6 +172,16 @@ export function AddEntry() {
       return;
     }
 
+    // Validate URL format
+    if (!isValidUrl(link.trim())) {
+      Alert.alert(
+        'Invalid URL',
+        'Please enter a valid URL. Make sure it includes a domain name (e.g., example.com or https://example.com)',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
     // Security check for suspicious URLs
     if (isSuspiciousUrl(link.trim())) {
       Alert.alert(
@@ -235,6 +245,16 @@ export function AddEntry() {
 
   const handleSave = useCallback(async () => {
     if (!canSave || !params.id) {
+      return;
+    }
+
+    // Validate URL format
+    if (!isValidUrl(link.trim())) {
+      Alert.alert(
+        'Invalid URL',
+        'Please enter a valid URL. Make sure it includes a domain name (e.g., example.com or https://example.com)',
+        [{ text: 'OK' }]
+      );
       return;
     }
 

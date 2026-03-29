@@ -1,4 +1,6 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Brightness from 'expo-brightness';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -13,6 +15,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { BlurbColors } from '@/theme/colors';
 import { BlurbTypography } from '@/theme/typography';
+
+const BRIGHTNESS_BACKUP_KEY = '@blurb:brightness_backup';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -44,6 +48,25 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded]);
+
+  // Restore brightness on app launch if backup exists
+  useEffect(() => {
+    const restoreBrightness = async () => {
+      try {
+        const savedBrightness = await AsyncStorage.getItem(BRIGHTNESS_BACKUP_KEY);
+        if (savedBrightness) {
+          const brightness = parseFloat(savedBrightness);
+          await Brightness.setBrightnessAsync(brightness);
+          await AsyncStorage.removeItem(BRIGHTNESS_BACKUP_KEY);
+          console.log('Restored brightness from backup:', brightness);
+        }
+      } catch (error) {
+        console.error('Error restoring brightness:', error);
+      }
+    };
+
+    restoreBrightness();
+  }, []);
 
   if (!fontsLoaded) {
     return null;
