@@ -4,20 +4,21 @@
     "slug": "blurb",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/icons/ios/AppIcon~ios-marketing.png",
     "scheme": "blurb",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.volt9801.blurb"
+      "bundleIdentifier": "com.volt9801.blurb",
+      "icon": "./assets/icons/ios/AppIcon~ios-marketing.png"
     },
     "android": {
+      "icon": "./assets/icons/android/play_store_512.png",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "foregroundImage": "./assets/icons/android/play_store_512.png",
+        "monochromeImage": "./assets/icons/android/play_store_512.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
@@ -28,7 +29,7 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/icons/web/favicon.ico"
     },
     "plugins": [
       "expo-router",
