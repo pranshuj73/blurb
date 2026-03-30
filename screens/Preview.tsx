@@ -4,6 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Subheading } from '@/components/ui/subheading';
 import { QR_CONFIG } from '@/lib/qr';
 import { Entry, storage } from '@/lib/storage';
+import { getAccentColorFromFavicon } from '@/lib/utils/favicon-color';
 import { BlurbColors } from '@/theme/colors';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useMemo } from 'react';
@@ -77,8 +78,20 @@ export function Preview() {
   }
 
   const handleSave = async () => {
+    const domainSeed = (() => {
+      try {
+        return new URL(entry.link).hostname.replace(/^www\./, '');
+      } catch {
+        return entry.link;
+      }
+    })();
+    const resolvedAccent =
+      entry.iconType === 'image'
+        ? await getAccentColorFromFavicon(entry.iconUri, domainSeed)
+        : await getAccentColorFromFavicon(undefined, domainSeed);
+
     const saveAndNavigate = async () => {
-      await storage.saveEntry(entry);
+      await storage.saveEntry({ ...entry, accentColor: resolvedAccent || entry.accentColor });
       router.replace('/');
     };
 
@@ -143,8 +156,10 @@ export function Preview() {
 
       <View style={styles.preview}>
         <View style={styles.previewHeader}>
-          {entry.iconUri && (
+          {entry.iconUri ? (
             <ThemedIcon uri={entry.iconUri} size={52} />
+          ) : (
+            <ThemedIcon uri="Link" iconType="lucide" size={52} />
           )}
           <View style={styles.titleSection}>
             <Heading size="lg" weight="300">{entry.title}</Heading>

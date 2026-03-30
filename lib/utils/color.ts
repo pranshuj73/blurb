@@ -81,6 +81,37 @@ function hashString(input: string) {
   return Math.abs(hash);
 }
 
+export function rgbToHsl(r: number, g: number, b: number) {
+  const rn = r / 255;
+  const gn = g / 255;
+  const bn = b / 255;
+  const max = Math.max(rn, gn, bn);
+  const min = Math.min(rn, gn, bn);
+  const delta = max - min;
+  let h = 0;
+  let s = 0;
+  const l = (max + min) / 2;
+
+  if (delta !== 0) {
+    s = delta / (1 - Math.abs(2 * l - 1));
+    switch (max) {
+      case rn:
+        h = ((gn - bn) / delta) % 6;
+        break;
+      case gn:
+        h = (bn - rn) / delta + 2;
+        break;
+      default:
+        h = (rn - gn) / delta + 4;
+        break;
+    }
+    h *= 60;
+    if (h < 0) h += 360;
+  }
+
+  return { h, s, l };
+}
+
 export function deriveMutedAccent(seed: string) {
   const hash = hashString(seed || 'blurb');
   const hue = hash % 360;
@@ -89,4 +120,16 @@ export function deriveMutedAccent(seed: string) {
   const { r, g, b } = hslToRgb(hue, saturation, lightness);
   const base = rgbToHex(r, g, b);
   return mixColors(base, '#0D0D10', 0.55);
+}
+
+export function normalizeAccentColor(hex: string) {
+  const { r, g, b } = hexToRgb(hex);
+  const { h, s, l } = rgbToHsl(r, g, b);
+  const normalized = hslToRgb(
+    h,
+    Math.min(0.45, Math.max(0.12, s * 0.75)),
+    Math.min(0.62, Math.max(0.34, l * 0.9))
+  );
+  const base = rgbToHex(normalized.r, normalized.g, normalized.b);
+  return mixColors(base, '#0D0D10', 0.45);
 }

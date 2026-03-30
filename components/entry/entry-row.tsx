@@ -3,7 +3,7 @@ import { BlurbColors } from '@/theme/colors';
 import React, { useMemo } from 'react';
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { ThemedIcon } from './themed-icon';
-import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
+import { LinearGradient } from 'expo-linear-gradient';
 import { withAlpha } from '@/lib/utils/color';
 
 interface EntryRowProps {
@@ -20,10 +20,10 @@ export function EntryRow({ entry, onPress, onLongPress }: EntryRowProps) {
       return entry.link.replace(/^https?:\/\//, '').split('/')[0];
     }
   }, [entry.link]);
-  const gradientId = useMemo(() => `card-gradient-${entry.id}`, [entry.id]);
   const accent = entry.accentColor || '#1F1F22';
-  const gradientStart = withAlpha(accent, 0.25);
-  const gradientEnd = withAlpha(accent, 0.0);
+  const gradientStart = withAlpha(accent, 0.3);
+  const gradientMid = withAlpha(accent, 0.12);
+  const gradientEnd = withAlpha(accent, 0.02);
 
   return (
     <TouchableOpacity
@@ -34,23 +34,20 @@ export function EntryRow({ entry, onPress, onLongPress }: EntryRowProps) {
       delayPressIn={0}
     >
       <View style={styles.row}>
-        <Svg style={styles.gradient} width="100%" height="100%">
-          <Defs>
-            <LinearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
-              <Stop offset="0" stopColor={gradientStart} />
-              <Stop offset="1" stopColor={gradientEnd} />
-            </LinearGradient>
-          </Defs>
-          <Rect width="100%" height="100%" rx="20" fill={`url(#${gradientId})`} />
-        </Svg>
+        <LinearGradient
+          colors={[gradientStart, gradientMid, gradientEnd]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.gradient}
+        />
         <View style={styles.iconContainer}>
           {entry.iconUri ? (
             <View style={styles.iconBadge}>
               <ThemedIcon uri={entry.iconUri} iconType={entry.iconType} size={40} />
             </View>
           ) : (
-            <View style={[styles.iconBadge, styles.iconPlaceholder]}>
-              <View style={styles.iconPlaceholderInner} />
+            <View style={styles.iconBadge}>
+              <ThemedIcon uri="Link" iconType="lucide" size={40} />
             </View>
           )}
         </View>
@@ -69,6 +66,7 @@ export function EntryRow({ entry, onPress, onLongPress }: EntryRowProps) {
             </Text>
           )}
         </View>
+        <View style={styles.accentDotWrapper} />
       </View>
     </TouchableOpacity>
   );
@@ -103,6 +101,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+    borderRadius: 20,
   },
   iconContainer: {
     marginRight: 16,
@@ -128,6 +127,11 @@ const styles = StyleSheet.create({
   },
   textContainer: {
     flex: 1,
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  accentDotWrapper: {
+    alignItems: 'center',
     justifyContent: 'center',
   },
   title: {

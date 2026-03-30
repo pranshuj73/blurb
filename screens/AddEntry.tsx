@@ -5,6 +5,8 @@ import { Entry, storage } from '@/lib/storage';
 import { isSuspiciousUrl, isValidUrl } from '@/lib/utils/url';
 import { BlurbColors } from '@/theme/colors';
 import { BlurbTypography } from '@/theme/typography';
+import { getAccentColorFromFavicon } from '@/lib/utils/favicon-color';
+import { cacheFavicon } from '@/lib/utils/favicon-cache';
 import * as Crypto from 'expo-crypto';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -40,6 +42,15 @@ const DISMISS_THRESHOLD = 180;
 const MAX_TITLE_LENGTH = 100;
 const MAX_SUBTITLE_LENGTH = 150;
 const MAX_URL_LENGTH = 2048; // Standard max URL length
+
+function getDomainSeed(rawUrl: string) {
+  try {
+    const url = new URL(rawUrl);
+    return url.hostname.replace(/^www\./, '');
+  } catch {
+    return rawUrl;
+  }
+}
 
 export function AddEntry() {
   const router = useRouter();
@@ -130,7 +141,8 @@ export function AddEntry() {
         setSubtitle(metadata.subtitle);
       }
       if (metadata.iconUrl) {
-        setIconUri(metadata.iconUrl);
+        const cachedIcon = await cacheFavicon(metadata.iconUrl);
+        setIconUri(cachedIcon);
         setIconType('image'); // Favicon is an image
       }
       if (metadata.accentColor) {
@@ -210,13 +222,15 @@ export function AddEntry() {
     proceedWithPreview();
   }, [link, title, subtitle, iconUri, iconType, params.id, isEditing, drawerOffset, router]);
 
-  const proceedWithPreview = useCallback(() => {
+  const proceedWithPreview = useCallback(async () => {
+    const resolvedIconUri =
+      iconUri && iconUri.startsWith('http') ? await cacheFavicon(iconUri) : iconUri;
     const entry: Entry = {
       id: params.id || Crypto.randomUUID(),
       link: link.trim(),
       title: title.trim(),
       subtitle: subtitle.trim() || undefined,
-      iconUri,
+      iconUri: resolvedIconUri,
       iconType,
       accentColor,
       createdAt: params.id ? Date.now() : Date.now(), // Will be set properly on save
@@ -299,14 +313,24 @@ export function AddEntry() {
         return;
       }
 
+      const resolvedAccent =
+        iconType === 'image'
+          ? await getAccentColorFromFavicon(iconUri, getDomainSeed(link.trim()))
+          : await getAccentColorFromFavicon(undefined, getDomainSeed(link.trim()));
+
+      let resolvedIconUri = iconUri;
+      if (iconType === 'image' && iconUri && iconUri.startsWith('http')) {
+        resolvedIconUri = await cacheFavicon(iconUri);
+      }
+
       const updatedEntry: Entry = {
         ...existingEntry,
         link: link.trim(),
         title: title.trim(),
         subtitle: subtitle.trim() || undefined,
-        iconUri,
+        iconUri: resolvedIconUri,
         iconType,
-        accentColor,
+        accentColor: resolvedAccent || accentColor,
         updatedAt: Date.now(),
       };
 
@@ -617,9 +641,7 @@ export function AddEntry() {
                 <ThemedIcon uri={iconUri} iconType={iconType} size={64} />
               )}
               {!iconUri && (
-                <View style={[styles.iconPlaceholder, { width: 64, height: 64, borderRadius: 8 }]}>
-                  <Text style={styles.iconPlaceholderText}>No icon</Text>
-                </View>
+                <ThemedIcon uri="Link" iconType="lucide" size={64} />
               )}
               <View style={styles.iconButtonsColumn}>
                 <TouchableOpacity
