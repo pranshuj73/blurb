@@ -104,7 +104,7 @@ export function FullscreenQR() {
     const tint = (value: number) => applyAlpha(accentColor, value);
     return [tint(0.55), tint(0.35), tint(0.2), 'rgba(0, 0, 0, 0.96)'];
   }, [accentColor]);
-  const urlColor = useMemo(() => applyAlpha(accentColor, 0.82), [accentColor]);
+  const urlColor = "#ffffff67";
   const qrBorderColor = useMemo(() => applyAlpha(accentColor, 0.5), [accentColor]);
 
   const {
@@ -359,7 +359,7 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 24,
+    marginTop: -80,
   },
   topControls: {
     position: 'absolute',
