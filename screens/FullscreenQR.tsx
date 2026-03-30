@@ -1,5 +1,6 @@
 import { Entry, storage } from '@/lib/storage';
 import { normalizeUrl } from '@/lib/utils/url';
+import { getQRLayout, QRSizing } from '@/lib/utils/qr-layout';
 import { BlurbColors } from '@/theme/colors';
 import { ThemedIcon } from '@/components/entry/themed-icon';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -28,7 +29,6 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const BRIGHTNESS_BACKUP_KEY = '@blurb:brightness_backup';
-const QR_CONTAINER_PADDING = 16;
 
 function getHostFromUrl(link?: string) {
   if (!link) return '';
@@ -95,6 +95,9 @@ export function FullscreenQR() {
     };
   }, [maxBrightness, originalBrightness]);
 
+  const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+  const layout = useMemo<QRSizing>(() => getQRLayout(Math.min(screenWidth, screenHeight)), [screenWidth, screenHeight]);
+
   const displayUrl = useMemo(() => getHostFromUrl(entry?.link), [entry?.link]);
   const accentColor = entry?.accentColor ?? '#1F1F1F';
   const gradientColors = useMemo(() => {
@@ -104,16 +107,16 @@ export function FullscreenQR() {
   const urlColor = useMemo(() => applyAlpha(accentColor, 0.82), [accentColor]);
   const qrBorderColor = useMemo(() => applyAlpha(accentColor, 0.5), [accentColor]);
 
-  const screenWidth = Dimensions.get('window').width;
-  const headerPadding = 32 * 2;
-  const qrContainerPadding = 24 * 2;
-  const shellOuterSize = Math.round((screenWidth - headerPadding - qrContainerPadding) * 0.84);
-  const shellSize = Math.max(shellOuterSize - QR_CONTAINER_PADDING * 2, 0);
-  const qrPadding = QR_CONTAINER_PADDING;
-  const qrSize = Math.max(shellSize - qrPadding * 2, 210);
-  const logoSize = Math.max(Math.round(qrSize * 0.22), 26);
-  const qrLogoSize = Math.round(logoSize * 1.1);
-  const qrLogoContainerSize = qrLogoSize + 18;
+  const {
+    shellSize,
+    shellPadding: qrPadding,
+    qrSize,
+    heroIconSize,
+    heroBadgeSize,
+    qrLogoSize,
+    qrLogoContainerSize,
+    outerPadding,
+  } = layout;
   const qrLogoProps = entry?.iconUri && entry.iconType !== 'lucide' ? { uri: entry.iconUri } : undefined;
   const hasImageLogo = Boolean(qrLogoProps);
   const headerIconType = hasImageLogo ? 'image' : 'lucide';
@@ -252,9 +255,17 @@ export function FullscreenQR() {
 
             <View style={styles.content}>
               <View style={styles.titleSection}>
-                <View style={styles.iconBadge}>
-                  <View style={styles.iconFrame}>
-                    <ThemedIcon uri={headerIconUri} iconType={headerIconType} size={52} />
+                <View style={[styles.iconBadge, { width: heroBadgeSize, height: heroBadgeSize }]}>
+                  <View
+                    style={[
+                      styles.iconFrame,
+                      {
+                        width: heroBadgeSize - 18,
+                        height: heroBadgeSize - 18,
+                      },
+                    ]}
+                  >
+                    <ThemedIcon uri={headerIconUri} iconType={headerIconType} size={heroIconSize} />
                   </View>
                 </View>
                 <Text style={styles.titleText} numberOfLines={2}>
@@ -273,7 +284,12 @@ export function FullscreenQR() {
               </View>
 
               <View style={styles.qrWrapper}>
-                <View style={[styles.qrContainer, { borderColor: qrBorderColor }]}>
+                <View
+                  style={[
+                    styles.qrContainer,
+                    { borderColor: qrBorderColor, padding: Math.max(outerPadding, 18) },
+                  ]}
+                >
                   <View
                     style={[
                       styles.qrShell,
