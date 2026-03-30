@@ -162,7 +162,7 @@ export function Preview() {
             <ThemedIcon uri="Link" iconType="lucide" size={52} />
           )}
           <View style={styles.titleSection}>
-            <Heading size="lg" weight="300">{entry.title}</Heading>
+            <Heading size="md" weight="300">{entry.title}</Heading>
             {entry.subtitle && (
               <Subheading size="md">{entry.subtitle}</Subheading>
             )}
@@ -265,12 +265,14 @@ const styles = StyleSheet.create({
   previewHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
+    justifyContent: 'center',
     marginBottom: 40,
+    gap: 13
   },
   titleSection: {
     flex: 1,
     alignItems: 'flex-start',
-    gap: 4,
+    paddingTop: 6
   },
   qrWrapper: {
     alignItems: 'center',
