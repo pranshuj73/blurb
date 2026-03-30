@@ -10,7 +10,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.volt9801.blurb",
+      "bundleIdentifier": "com.prnsh.blurb",
       "icon": "./assets/icons/ios/AppIcon~ios-marketing.png"
     },
     "android": {
@@ -25,7 +25,7 @@
       "permissions": [
         "android.permission.RECORD_AUDIO"
       ],
-      "package": "com.volt9801.blurb"
+      "package": "com.prnsh.blurb"
     },
     "web": {
       "output": "static",
