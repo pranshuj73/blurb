@@ -109,13 +109,16 @@ export function FullscreenQR() {
 
   const {
     shellSize,
-    shellPadding: qrPadding,
+    shellPadding,
     qrSize,
     heroIconSize,
     heroBadgeSize,
     qrLogoSize,
     qrLogoContainerSize,
     outerPadding,
+    outerRadius,
+    shellRadius,
+    innerRadius,
   } = layout;
   const qrLogoProps = entry?.iconUri && entry.iconType !== 'lucide' ? { uri: entry.iconUri } : undefined;
   const hasImageLogo = Boolean(qrLogoProps);
@@ -287,7 +290,11 @@ export function FullscreenQR() {
                 <View
                   style={[
                     styles.qrContainer,
-                    { borderColor: qrBorderColor, padding: Math.max(outerPadding, 18) },
+                    {
+                      borderColor: qrBorderColor,
+                      padding: Math.max(outerPadding, 18),
+                      borderRadius: outerRadius,
+                    },
                   ]}
                 >
                   <View
@@ -296,12 +303,12 @@ export function FullscreenQR() {
                       {
                         width: shellSize,
                         height: shellSize,
-                        borderRadius: shellSize * 0.12,
-                        padding: qrPadding,
+                        borderRadius: shellRadius,
+                        padding: shellPadding,
                       },
                     ]}
                   >
-                    <View style={styles.qrShellInner}>
+                    <View style={[styles.qrShellInner, { borderRadius: innerRadius }]}>
                       <QRCode
                         value={entry.link}
                         size={qrSize}
@@ -510,7 +517,6 @@ const styles = StyleSheet.create({
   qrShellInner: {
     width: '100%',
     height: '100%',
-    borderRadius: 18,
     padding: 10,
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
