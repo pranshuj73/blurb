@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     justifyContent: 'center',
     marginBottom: 40,
-    gap: 13
+    gap: 16
   },
   titleSection: {
     flex: 1,

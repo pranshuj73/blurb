@@ -9,6 +9,7 @@ interface ThemedIconProps {
   size: number;
   borderRadius?: number;
   style?: any;
+  iconSize?: number;
 }
 
 /**
@@ -18,9 +19,8 @@ interface ThemedIconProps {
  * - Proper containment without cropping
  * - Consistent sizing
  */
-export function ThemedIcon({ uri, iconType = 'image', size, borderRadius, style }: ThemedIconProps) {
+export function ThemedIcon({ uri, iconType = 'image', size, borderRadius, style, iconSize = 32 }: ThemedIconProps) {
   // Match the placeholder inner size (32px)
-  const iconSize = 32;
   const padding = (size - iconSize) / 2;
   // Always make icons circular
   const finalBorderRadius = size / 2;

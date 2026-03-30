@@ -641,7 +641,7 @@ export function AddEntry() {
                 <ThemedIcon uri={iconUri} iconType={iconType} size={64} />
               )}
               {!iconUri && (
-                <ThemedIcon uri="Link" iconType="lucide" size={64} />
+                <ThemedIcon uri="Link" iconType="lucide" size={64} iconSize={28} />
               )}
               <View style={styles.iconButtonsColumn}>
                 <TouchableOpacity
@@ -649,7 +649,7 @@ export function AddEntry() {
                   onPress={handlePickImage}
                 >
                   <Text style={styles.iconButtonText}>
-                    {iconUri ? 'Upload' : 'Upload'} Image
+                    Upload Image
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -833,7 +833,7 @@ const styles = StyleSheet.create({
   },
   iconSection: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: 16,
   },
   iconButtonsColumn: {

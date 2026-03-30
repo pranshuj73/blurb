@@ -328,10 +328,8 @@ export function FullscreenQR() {
                             },
                           ]}
                         >
-                          <View style={styles.qrLogoFrame}>
-                            <View style={[styles.qrLogoBackground, { width: qrLogoSize + 12, height: qrLogoSize + 12 }]}>
-                              <ThemedIcon uri={headerIconUri} iconType={headerIconType} size={qrLogoSize} />
-                            </View>
+                          <View style={[styles.qrLogoBackground, { width: qrLogoSize + 12, height: qrLogoSize + 12 }]}>
+                            <ThemedIcon uri={headerIconUri} iconType={headerIconType} size={qrLogoSize} iconSize={qrLogoSize * 0.8} />
                           </View>
                         </View>
                       )}
@@ -542,12 +540,9 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   qrLogoBackground: {
-    borderRadius: "100%",
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 4,
-    borderColor: '#00000088',
   },
   loadingText: {
     fontSize: 16,
