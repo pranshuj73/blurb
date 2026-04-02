@@ -135,7 +135,12 @@ export function AddEntry() {
       const metadata = await scrapeMetadata(link.trim());
 
       if (metadata.title) {
-        setTitle(metadata.title);
+        const currentTitle = title.trim();
+        const metadataTitle = metadata.title.trim();
+
+        if (currentTitle.length === 0 || currentTitle === metadataTitle) {
+          setTitle(metadataTitle);
+        }
       }
       if (metadata.subtitle) {
         setSubtitle(metadata.subtitle);
@@ -159,7 +164,7 @@ export function AddEntry() {
       }
       setIsScraping(false);
     }
-  }, [link, lastSyncTime]);
+  }, [link, lastSyncTime, title]);
 
   const handlePickImage = async () => {
     try {
