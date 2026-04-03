@@ -7,7 +7,7 @@ import { QR_CONFIG } from '@/lib/qr';
 import { Entry, ScannedEntry, storage } from '@/lib/storage';
 import { getAccentColorFromFavicon } from '@/lib/utils/favicon-color';
 import { BlurbColors } from '@/theme/colors';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { ChevronLeft, ExternalLink, Pencil } from 'lucide-react-native';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Linking, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -24,13 +24,14 @@ export function Preview() {
   const screenOpacity = useSharedValue(0);
   const screenScale = useSharedValue(0.95);
 
-  const entry: Entry | ScannedEntry | null = useMemo(() => {
+  const initialEntry: Entry | ScannedEntry | null = useMemo(() => {
     try {
       return JSON.parse(params.entry || '{}');
     } catch {
       return null;
     }
   }, [params.entry]);
+  const [entry, setEntry] = useState<Entry | ScannedEntry | null>(initialEntry);
 
   const isNew = params.isNew === 'true';
   const isTitleEditable = params.editableTitle === 'true';
@@ -38,8 +39,32 @@ export function Preview() {
   const [editableTitle, setEditableTitle] = useState('');
 
   useEffect(() => {
+    setEntry(initialEntry);
+  }, [initialEntry]);
+
+  useEffect(() => {
     setEditableTitle(entry?.title ?? '');
   }, [entry?.title]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      if (isNew || !initialEntry) return;
+
+      const syncEntry = async () => {
+        if ('scannedAt' in initialEntry) {
+          const scannedEntries = await storage.getAllScannedEntries();
+          const latest = scannedEntries.find((item) => item.link === initialEntry.link) ?? null;
+          setEntry(latest);
+          return;
+        }
+
+        const latest = await storage.getEntry(initialEntry.id);
+        setEntry(latest);
+      };
+
+      void syncEntry();
+    }, [initialEntry, isNew])
+  );
 
   useEffect(() => {
     screenOpacity.value = withSpring(1, {
@@ -184,7 +209,7 @@ export function Preview() {
         <View style={styles.preview}>
           <View style={styles.previewHeader}>
             {entry.iconUri ? (
-              <ThemedIcon uri={entry.iconUri} size={52} />
+              <ThemedIcon uri={entry.iconUri} iconType={entry.iconType} size={52} />
             ) : (
               <ThemedIcon uri="Link" iconType="lucide" size={52} />
             )}
@@ -270,6 +295,11 @@ const styles = StyleSheet.create({
   headerSide: {
     width: 96,
     justifyContent: 'center',
+  },
+  headerLeftActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   headerSideRight: {
     alignItems: 'center',

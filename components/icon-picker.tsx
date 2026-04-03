@@ -166,9 +166,17 @@ interface IconPickerProps {
   visible: boolean;
   onClose: () => void;
   onSelectIcon: (iconName: string) => void;
+  topActionLabel?: string;
+  onPressTopAction?: () => void;
 }
 
-export function IconPicker({ visible, onClose, onSelectIcon }: IconPickerProps) {
+export function IconPicker({
+  visible,
+  onClose,
+  onSelectIcon,
+  topActionLabel,
+  onPressTopAction,
+}: IconPickerProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const insets = useSafeAreaInsets();
 
@@ -236,6 +244,12 @@ export function IconPicker({ visible, onClose, onSelectIcon }: IconPickerProps) 
           )}
         </View>
 
+        {topActionLabel && onPressTopAction ? (
+          <TouchableOpacity style={styles.topActionButton} onPress={onPressTopAction} activeOpacity={0.88}>
+            <Text style={styles.topActionButtonText}>{topActionLabel}</Text>
+          </TouchableOpacity>
+        ) : null}
+
         <FlatList
           data={filteredIcons}
           renderItem={renderIcon}
@@ -299,6 +313,21 @@ const styles = StyleSheet.create({
     ...BlurbTypography.body,
     color: BlurbColors.text,
     paddingVertical: 4,
+  },
+  topActionButton: {
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 6,
+    minHeight: 48,
+    borderRadius: 14,
+    backgroundColor: BlurbColors.text,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  topActionButtonText: {
+    ...BlurbTypography.body,
+    color: BlurbColors.background,
+    fontWeight: '700',
   },
   iconGrid: {
     padding: 16,

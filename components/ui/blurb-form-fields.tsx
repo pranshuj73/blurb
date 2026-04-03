@@ -1,8 +1,9 @@
 import { ThemedIcon } from '@/components/entry/themed-icon';
 import { BlurbColors } from '@/theme/colors';
 import { BlurbTypography } from '@/theme/typography';
+import { RefreshCw } from 'lucide-react-native';
 import React from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 type BlurbFormFieldsProps = {
   iconUri?: string;
@@ -11,6 +12,9 @@ type BlurbFormFieldsProps = {
   onTitleChange: (value: string) => void;
   link: string;
   onLinkChange: (value: string) => void;
+  onSyncFavicon?: () => void;
+  onPressIcon?: () => void;
+  isSyncingIcon?: boolean;
 };
 
 export function BlurbFormFields({
@@ -20,16 +24,24 @@ export function BlurbFormFields({
   onTitleChange,
   link,
   onLinkChange,
+  onSyncFavicon,
+  onPressIcon,
+  isSyncingIcon = false,
 }: BlurbFormFieldsProps) {
   return (
     <View style={styles.formCard}>
-      <View style={styles.avatarWrap}>
+      <TouchableOpacity
+        style={styles.avatarWrap}
+        onPress={onPressIcon}
+        activeOpacity={onPressIcon ? 0.88 : 1}
+        disabled={!onPressIcon}
+      >
         {iconUri ? (
           <ThemedIcon uri={iconUri} iconType={iconType} size={44} />
         ) : (
           <ThemedIcon uri="Link" iconType="lucide" size={44} />
         )}
-      </View>
+      </TouchableOpacity>
 
       <View style={styles.formFields}>
         <View style={styles.fieldGroup}>
@@ -46,17 +58,29 @@ export function BlurbFormFields({
 
         <View style={styles.fieldGroup}>
           <Text style={styles.fieldLabel}>Link</Text>
-          <TextInput
-            value={link}
-            onChangeText={onLinkChange}
-            placeholder="https://"
-            placeholderTextColor={BlurbColors.textSecondary}
-            style={styles.input}
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="url"
-            maxLength={2048}
-          />
+          <View style={styles.linkInputWrap}>
+            <TextInput
+              value={link}
+              onChangeText={onLinkChange}
+              placeholder="https://"
+              placeholderTextColor={BlurbColors.textSecondary}
+              style={[styles.input, styles.linkInput]}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
+              maxLength={2048}
+            />
+            {onSyncFavicon ? (
+              <TouchableOpacity
+                style={[styles.syncButton, isSyncingIcon && styles.syncButtonDisabled]}
+                onPress={onSyncFavicon}
+                disabled={isSyncingIcon}
+                activeOpacity={0.88}
+              >
+                <RefreshCw color={BlurbColors.text} size={15} />
+              </TouchableOpacity>
+            ) : null}
+          </View>
         </View>
       </View>
     </View>
@@ -75,6 +99,13 @@ const styles = StyleSheet.create({
   avatarWrap: {
     alignItems: 'center',
     justifyContent: 'center',
+    alignSelf: 'center',
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
   },
   formFields: {
     gap: 14,
@@ -99,5 +130,27 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 22,
     fontFamily: 'Inter',
+  },
+  linkInputWrap: {
+    position: 'relative',
+    justifyContent: 'center',
+  },
+  linkInput: {
+    paddingRight: 56,
+  },
+  syncButton: {
+    position: 'absolute',
+    right: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  syncButtonDisabled: {
+    opacity: 0.7,
   },
 });

@@ -20,8 +20,9 @@ interface ThemedIconProps {
  * - Consistent sizing
  */
 export function ThemedIcon({ uri, iconType = 'image', size, borderRadius, style, iconSize = 32 }: ThemedIconProps) {
+  const resolvedIconSize = iconType === 'lucide' && iconSize === 32 ? Math.round(size * 0.52) : iconSize;
   // Match the placeholder inner size (32px)
-  const padding = (size - iconSize) / 2;
+  const padding = (size - resolvedIconSize) / 2;
   // Always make icons circular
   const finalBorderRadius = size / 2;
 
@@ -33,13 +34,13 @@ export function ThemedIcon({ uri, iconType = 'image', size, borderRadius, style,
       const FallbackIcon = LucideIcons.Link;
       return (
         <View style={[styles.container, { width: size, height: size, borderRadius: finalBorderRadius }, style]}>
-          <FallbackIcon size={iconSize} color="#000000" />
+          <FallbackIcon size={resolvedIconSize} color="#000000" />
         </View>
       );
     }
     return (
       <View style={[styles.container, { width: size, height: size, borderRadius: finalBorderRadius }, style]}>
-        <IconComponent size={iconSize} color="#000000" />
+        <IconComponent size={resolvedIconSize} color="#000000" />
       </View>
     );
   }
@@ -50,7 +51,7 @@ export function ThemedIcon({ uri, iconType = 'image', size, borderRadius, style,
       <View style={[styles.imageWrapper, { padding }]}>
         <Image
           source={{ uri }}
-          style={[styles.image, { width: iconSize, height: iconSize }]}
+          style={[styles.image, { width: resolvedIconSize, height: resolvedIconSize }]}
           contentFit="contain"
           transition={200}
           cachePolicy="memory-disk"

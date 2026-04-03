@@ -6,7 +6,7 @@ import { ThemedIcon } from '@/components/entry/themed-icon';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Brightness from 'expo-brightness';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Dimensions,
@@ -27,6 +27,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ChevronLeft, Pencil } from 'lucide-react-native';
 
 const BRIGHTNESS_BACKUP_KEY = '@blurb:brightness_backup';
 
@@ -69,7 +70,6 @@ export function FullscreenQR() {
   const screenScale = useSharedValue(0.95);
 
   useEffect(() => {
-    loadEntry();
     screenOpacity.value = withSpring(1, {
       damping: 28,
       stiffness: 300,
@@ -81,6 +81,12 @@ export function FullscreenQR() {
       mass: 0.7,
     });
   }, [params.id]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadEntry();
+    }, [params.id])
+  );
 
   const screenStyle = useAnimatedStyle(() => ({
     opacity: screenOpacity.value,
@@ -120,10 +126,9 @@ export function FullscreenQR() {
     shellRadius,
     innerRadius,
   } = layout;
-  const qrLogoProps = entry?.iconUri && entry.iconType !== 'lucide' ? { uri: entry.iconUri } : undefined;
-  const hasImageLogo = Boolean(qrLogoProps);
-  const headerIconType = hasImageLogo ? 'image' : 'lucide';
-  const headerIconUri = hasImageLogo ? entry?.iconUri ?? 'Link' : 'Link';
+  const qrLogoProps = entry?.iconUri && entry.iconType === 'image' ? { uri: entry.iconUri } : undefined;
+  const headerIconType = entry?.iconType ?? (entry?.iconUri ? 'image' : 'lucide');
+  const headerIconUri = entry?.iconUri ?? 'Link';
 
   const loadEntry = async () => {
     if (params.id) {
@@ -200,6 +205,15 @@ export function FullscreenQR() {
     });
   }, [router, maxBrightness, originalBrightness, screenOpacity, screenScale]);
 
+  const handleEdit = useCallback(() => {
+    router.push({
+      pathname: '/edit-entry-blurb',
+      params: {
+        entry: JSON.stringify(entry),
+      },
+    });
+  }, [router, entry]);
+
   if (!entry) {
     return (
       <View style={styles.container}>
@@ -236,12 +250,20 @@ export function FullscreenQR() {
           <View style={styles.innerContainer}>
             <StatusBar hidden={!showControls} barStyle="light-content" />
             {showControls && (
-              <TouchableOpacity
-                style={[styles.closeButton, { top: insets.top + 16 }]}
-                onPress={handleClose}
-              >
-                <Text style={styles.controlButtonText}>Close</Text>
-              </TouchableOpacity>
+              <View style={[styles.topControls, { top: insets.top + 16 }]}>
+                <TouchableOpacity style={styles.controlButton} onPress={handleClose}>
+                  <View style={styles.controlButtonInline}>
+                    <ChevronLeft color={BlurbColors.text} size={16} />
+                    <Text style={styles.controlButtonText}>Back</Text>
+                  </View>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.controlButton} onPress={handleEdit}>
+                  <View style={styles.controlButtonInline}>
+                    <Pencil color={BlurbColors.text} size={16} />
+                    <Text style={styles.controlButtonText}>Edit</Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
             )}
             <View style={[styles.bottomControls, { paddingBottom: insets.bottom + 16 }]}> 
               {showControls && (
@@ -372,7 +394,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     zIndex: 10,
     flexDirection: 'row',
-    justifyContent: 'flex-start',
+    justifyContent: 'space-between',
   },
   bottomControls: {
     position: 'absolute',
@@ -384,17 +406,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  closeButton: {
-    position: 'absolute',
-    left: 16,
-    paddingVertical: 10,
-    paddingHorizontal: 18,
-    borderRadius: 999, 
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    zIndex: 15,
-  },
   controlButton: {
     paddingVertical: 10,
     paddingHorizontal: 18,
@@ -402,6 +413,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.2)',
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  controlButtonInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   controlButtonText: {
     fontSize: 15,

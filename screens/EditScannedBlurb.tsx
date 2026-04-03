@@ -1,7 +1,11 @@
 import { BlurbFormFields } from '@/components/ui/blurb-form-fields';
 import { BlurbFormSheet } from '@/components/ui/blurb-form-sheet';
 import { useAppAlert } from '@/components/ui/app-alert-provider';
+import { IconPicker } from '@/components/icon-picker';
 import { ScannedEntry, storage } from '@/lib/storage';
+import { cacheFavicon } from '@/lib/utils/favicon-cache';
+import { getAccentColorFromFavicon } from '@/lib/utils/favicon-color';
+import { getDomainSeed, pickBlurbImage, syncFaviconForLink } from '@/lib/utils/blurb-icon';
 import { normalizeUrl } from '@/lib/utils/url';
 import { BlurbColors } from '@/theme/colors';
 import { BlurbTypography } from '@/theme/typography';
@@ -25,7 +29,12 @@ export function EditScannedBlurb() {
 
   const [title, setTitle] = useState(entry?.title ?? '');
   const [link, setLink] = useState(entry?.link ?? '');
+  const [iconUri, setIconUri] = useState(entry?.iconUri);
+  const [iconType, setIconType] = useState<'image' | 'lucide'>(entry?.iconType ?? (entry?.iconUri ? 'image' : 'lucide'));
+  const [accentColor, setAccentColor] = useState(entry?.accentColor);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSyncingIcon, setIsSyncingIcon] = useState(false);
+  const [showIconPicker, setShowIconPicker] = useState(false);
 
   if (!entry) return null;
 
@@ -43,10 +52,23 @@ export function EditScannedBlurb() {
 
     setIsSaving(true);
     try {
+      let resolvedIconUri = iconUri;
+      if (iconType === 'image' && resolvedIconUri?.startsWith('http')) {
+        resolvedIconUri = await cacheFavicon(resolvedIconUri);
+      }
+
+      const resolvedAccent =
+        iconType === 'image'
+          ? await getAccentColorFromFavicon(resolvedIconUri, getDomainSeed(nextLink))
+          : await getAccentColorFromFavicon(undefined, getDomainSeed(nextLink));
+
       await storage.saveScannedEntry({
         ...entry,
         title: nextTitle,
         link: normalizeUrl(nextLink),
+        iconUri: resolvedIconUri,
+        iconType,
+        accentColor: resolvedAccent || accentColor,
         updatedAt: Date.now(),
       });
       router.back();
@@ -58,6 +80,51 @@ export function EditScannedBlurb() {
       });
       setIsSaving(false);
     }
+  };
+
+  const handleSyncFavicon = async () => {
+    if (!link.trim()) {
+      await showAlert({
+        title: 'Missing link',
+        message: 'Enter a link before syncing the favicon.',
+      });
+      return;
+    }
+
+    setIsSyncingIcon(true);
+    try {
+      const nextIcon = await syncFaviconForLink(link);
+      setIconUri(nextIcon.iconUri);
+      setIconType(nextIcon.iconType);
+      setAccentColor(nextIcon.accentColor);
+    } catch (error) {
+      console.error('Error syncing favicon:', error);
+      await showAlert({
+        title: 'Sync failed',
+        message: 'The favicon could not be refreshed.',
+      });
+    } finally {
+      setIsSyncingIcon(false);
+    }
+  };
+
+  const handlePickImage = async () => {
+    try {
+      const picked = await pickBlurbImage();
+      if (!picked) return;
+
+      setIconUri(picked.iconUri);
+      setIconType(picked.iconType);
+      setAccentColor(await getAccentColorFromFavicon(picked.iconUri, getDomainSeed(link || title || entry.link)));
+    } catch (error) {
+      console.error('Error picking image:', error);
+    }
+  };
+
+  const handleSelectLucideIcon = (iconName: string) => {
+    setIconUri(iconName);
+    setIconType('lucide');
+    void getAccentColorFromFavicon(undefined, getDomainSeed(link || title || entry.link)).then(setAccentColor);
   };
 
   const handleDelete = async () => {
@@ -101,12 +168,22 @@ export function EditScannedBlurb() {
       }
     >
       <BlurbFormFields
-        iconUri={entry.iconUri}
-        iconType={entry.iconType}
+        iconUri={iconUri}
+        iconType={iconType}
         title={title}
         onTitleChange={setTitle}
         link={link}
         onLinkChange={setLink}
+        onSyncFavicon={handleSyncFavicon}
+        onPressIcon={() => setShowIconPicker(true)}
+        isSyncingIcon={isSyncingIcon}
+      />
+      <IconPicker
+        visible={showIconPicker}
+        onClose={() => setShowIconPicker(false)}
+        onSelectIcon={handleSelectLucideIcon}
+        topActionLabel="Upload image"
+        onPressTopAction={handlePickImage}
       />
     </BlurbFormSheet>
   );
