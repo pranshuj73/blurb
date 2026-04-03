@@ -15,6 +15,7 @@
     },
     "android": {
       "icon": "./assets/icons/android/play_store_512.png",
+      "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/icons/android/play_store_512.png",

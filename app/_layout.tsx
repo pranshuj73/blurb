@@ -112,6 +112,14 @@ export default function RootLayout() {
               }}
             />
             <Stack.Screen
+              name="scan-review"
+              options={{
+                presentation: 'transparentModal',
+                headerShown: false,
+                animation: 'none',
+              }}
+            />
+            <Stack.Screen
               name="scanned"
               options={{
                 presentation: 'transparentModal',

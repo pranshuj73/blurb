@@ -59,7 +59,9 @@ export function ScannedEntries() {
   );
 
   const renderItem = useCallback(
-    ({ item }: { item: ScannedEntry }) => <EntryRow entry={item} onPress={() => handlePress(item)} />,
+    ({ item }: { item: ScannedEntry }) => (
+      <EntryRow entry={item} onPress={() => handlePress(item)} onLongPress={() => handlePress(item)} />
+    ),
     [handlePress]
   );
 

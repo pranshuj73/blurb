@@ -3,12 +3,12 @@ import { Heading } from '@/components/ui/heading';
 import { Label } from '@/components/ui/label';
 import { Subheading } from '@/components/ui/subheading';
 import { QR_CONFIG } from '@/lib/qr';
-import { Entry, storage } from '@/lib/storage';
+import { Entry, ScannedEntry, storage } from '@/lib/storage';
 import { getAccentColorFromFavicon } from '@/lib/utils/favicon-color';
 import { BlurbColors } from '@/theme/colors';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useMemo } from 'react';
-import { Dimensions, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Dimensions, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import Animated, {
     runOnJS,
@@ -22,7 +22,7 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export function Preview() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ entry: string; isNew: string }>();
+  const params = useLocalSearchParams<{ entry: string; isNew: string; saveMode?: string; editableTitle?: string }>();
   const insets = useSafeAreaInsets();
   
   // Animation for smooth fade in/out
@@ -38,6 +38,13 @@ export function Preview() {
   }, [params.entry]);
 
   const isNew = params.isNew === 'true';
+  const isScannedDraft = params.saveMode === 'scanned';
+  const isTitleEditable = params.editableTitle === 'true';
+  const [editableTitle, setEditableTitle] = useState('');
+
+  useEffect(() => {
+    setEditableTitle(entry?.title ?? '');
+  }, [entry?.title]);
 
   useEffect(() => {
     // Animate in
@@ -60,6 +67,28 @@ export function Preview() {
     };
   });
 
+  const handleBack = () => {
+    screenOpacity.value = withSpring(
+      0,
+      {
+        damping: 30,
+        stiffness: 300,
+        mass: 0.7,
+      },
+      (finished) => {
+        'worklet';
+        if (finished) {
+          runOnJS(router.back)();
+        }
+      }
+    );
+    screenScale.value = withSpring(0.95, {
+      damping: 30,
+      stiffness: 300,
+      mass: 0.7,
+    });
+  };
+
   if (!entry || !entry.link) {
     return (
       <Animated.View style={[styles.container, screenStyle]}>
@@ -78,6 +107,7 @@ export function Preview() {
   }
 
   const handleSave = async () => {
+    const resolvedTitle = (isTitleEditable ? editableTitle : entry.title).trim() || entry.title;
     const domainSeed = (() => {
       try {
         return new URL(entry.link).hostname.replace(/^www\./, '');
@@ -91,7 +121,21 @@ export function Preview() {
         : await getAccentColorFromFavicon(undefined, domainSeed);
 
     const saveAndNavigate = async () => {
-      await storage.saveEntry({ ...entry, accentColor: resolvedAccent || entry.accentColor });
+      if (isScannedDraft) {
+        await storage.saveScannedEntry({
+          ...(entry as ScannedEntry),
+          title: resolvedTitle,
+          accentColor: resolvedAccent || entry.accentColor,
+        });
+        router.replace('/scanned');
+        return;
+      }
+
+      await storage.saveEntry({
+        ...entry,
+        title: resolvedTitle,
+        accentColor: resolvedAccent || entry.accentColor,
+      });
       router.replace('/');
     };
 
@@ -107,30 +151,6 @@ export function Preview() {
         'worklet';
         if (finished) {
           runOnJS(saveAndNavigate)();
-        }
-      }
-    );
-    screenScale.value = withSpring(0.95, {
-      damping: 30,
-      stiffness: 300,
-      mass: 0.7,
-    });
-  };
-
-
-  const handleBack = () => {
-    // Animate out
-    screenOpacity.value = withSpring(
-      0,
-      {
-        damping: 30,
-        stiffness: 300,
-        mass: 0.7,
-      },
-      (finished) => {
-        'worklet';
-        if (finished) {
-          runOnJS(router.back)();
         }
       }
     );
@@ -162,7 +182,18 @@ export function Preview() {
             <ThemedIcon uri="Link" iconType="lucide" size={52} />
           )}
           <View style={styles.titleSection}>
-            <Heading size="md" weight="300">{entry.title}</Heading>
+            {isTitleEditable ? (
+              <TextInput
+                value={editableTitle}
+                onChangeText={setEditableTitle}
+                placeholder="Name"
+                placeholderTextColor={BlurbColors.textSecondary}
+                style={styles.titleInput}
+                maxLength={100}
+              />
+            ) : (
+              <Heading size="md" weight="300">{entry.title}</Heading>
+            )}
             {entry.subtitle && (
               <Subheading size="md">{entry.subtitle}</Subheading>
             )}
@@ -178,7 +209,6 @@ export function Preview() {
               size={qrSize}
               color={BlurbColors.qrForeground}
               backgroundColor={BlurbColors.qrBackground}
-              errorCorrectionLevel={QR_CONFIG.errorCorrectionLevel}
             />
           </View>
         </View>
@@ -273,6 +303,22 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'flex-start',
     paddingTop: 6
+  },
+  titleInput: {
+    width: '100%',
+    fontSize: 26,
+    lineHeight: 32,
+    fontWeight: '300',
+    color: BlurbColors.text,
+    fontFamily: Platform.select({
+      ios: 'SF Pro Display',
+      android: 'sans-serif-light',
+      default: 'system-ui',
+    }),
+    borderBottomWidth: 1,
+    borderBottomColor: BlurbColors.border,
+    paddingBottom: 8,
+    marginBottom: 6,
   },
   qrWrapper: {
     alignItems: 'center',

@@ -1,12 +1,12 @@
 import { scrapeMetadata } from '@/lib/scraping';
-import { ScannedEntry, storage } from '@/lib/storage';
+import { ScannedEntry } from '@/lib/storage';
 import { cacheFavicon } from '@/lib/utils/favicon-cache';
 import { normalizeUrl } from '@/lib/utils/url';
 import { BlurbColors } from '@/theme/colors';
 import { BlurbTypography } from '@/theme/typography';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Crypto from 'expo-crypto';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -17,6 +17,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import Animated, { Easing, FadeIn, FadeOut, SlideInDown, SlideOutDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft, ScanLine } from 'lucide-react-native';
 
@@ -43,11 +44,18 @@ export function ScanEntry() {
     }
   }, [permission, requestPermission]);
 
-  const handleSaveScan = async (rawValue: string) => {
+  useFocusEffect(
+    React.useCallback(() => {
+      hasHandledScanRef.current = false;
+      setIsProcessing(false);
+    }, [])
+  );
+
+  const handleCreateScanDraft = async (rawValue: string): Promise<ScannedEntry> => {
     const normalizedLink = normalizeUrl(rawValue);
     const metadata = await scrapeMetadata(normalizedLink);
     const iconUri = metadata.iconUrl ? await cacheFavicon(metadata.iconUrl) : undefined;
-    const scannedEntry: ScannedEntry = {
+    return {
       id: Crypto.randomUUID(),
       title: metadata.title || getScannedLabel(normalizedLink),
       subtitle: metadata.subtitle,
@@ -59,8 +67,6 @@ export function ScanEntry() {
       updatedAt: Date.now(),
       scannedAt: Date.now(),
     };
-
-    await storage.saveScannedEntry(scannedEntry);
   };
 
   const handleBarcodeScanned = async ({ data }: BarcodePayload) => {
@@ -72,11 +78,17 @@ export function ScanEntry() {
     setIsProcessing(true);
 
     try {
-      await handleSaveScan(data);
-      router.replace('/?scanned=1');
+      const scannedEntry = await handleCreateScanDraft(data);
+      setIsProcessing(false);
+      router.push({
+        pathname: '/scan-review',
+        params: {
+          entry: JSON.stringify(scannedEntry),
+        },
+      });
     } catch (error) {
       console.error('Error saving scanned QR:', error);
-      Alert.alert('Scan failed', 'The QR was detected, but it could not be saved.');
+      Alert.alert('Scan failed', 'The QR was detected, but the draft could not be prepared.');
       hasHandledScanRef.current = false;
       setIsProcessing(false);
     }
@@ -114,7 +126,23 @@ export function ScanEntry() {
         onBarcodeScanned={handleBarcodeScanned}
       />
 
-      <View style={[styles.overlay, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 24 }]}>
+      <Animated.View
+        entering={FadeIn.duration(220).easing(Easing.out(Easing.quad))}
+        exiting={FadeOut.duration(180).easing(Easing.in(Easing.quad))}
+        style={styles.overlayBackdrop}
+      />
+
+      <Animated.View
+        entering={SlideInDown.duration(260).easing(Easing.out(Easing.cubic)).withInitialValues({
+          transform: [{ translateY: 28 }],
+          opacity: 0,
+        })}
+        exiting={SlideOutDown.duration(200).easing(Easing.in(Easing.cubic)).withInitialValues({
+          transform: [{ translateY: 0 }],
+          opacity: 1,
+        })}
+        style={[styles.overlay, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 24 }]}
+      >
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <ChevronLeft color={BlurbColors.text} size={20} />
           <Text style={styles.backButtonText}>Back</Text>
@@ -122,13 +150,12 @@ export function ScanEntry() {
 
         <View style={styles.scanFrameSection}>
           <View style={styles.scanPoster}>
-            <View style={styles.scanEyebrow}>
-              <ScanLine color={BlurbColors.textSecondary} size={16} />
-              <Text style={styles.scanEyebrowText}>Scan a blurb card</Text>
+            <View style={styles.scanHeader}>
+              <ScanLine color={BlurbColors.textSecondary} size={18} />
+              <Text style={styles.scanHeaderText}>Scan a blurb</Text>
             </View>
-            <Text style={styles.scanTitle}>Point the camera at their QR.</Text>
             <Text style={styles.scanCopy}>
-              We&apos;ll save the destination instantly and keep it in your scanned list.
+              We&apos;ll open a quick form so you can name it before saving.
             </Text>
           </View>
 
@@ -139,10 +166,10 @@ export function ScanEntry() {
 
         <View style={styles.footerHint}>
           <Text style={styles.footerHintText}>
-            {isProcessing ? 'Saving scan...' : 'Hold steady while the QR enters the frame.'}
+            {isProcessing ? 'Preparing preview...' : 'Hold steady while the QR enters the frame.'}
           </Text>
         </View>
-      </View>
+      </Animated.View>
     </View>
   );
 }
@@ -153,9 +180,13 @@ const styles = StyleSheet.create({
     backgroundColor: BlurbColors.background,
   },
   overlay: {
+    ...StyleSheet.absoluteFillObject,
     flex: 1,
     justifyContent: 'space-between',
     paddingHorizontal: 20,
+  },
+  overlayBackdrop: {
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0, 0, 0, 0.36)',
   },
   backButton: {
@@ -178,29 +209,23 @@ const styles = StyleSheet.create({
   scanFrameSection: {
     alignItems: 'center',
     gap: 28,
+    marginTop: -54,
   },
   scanPoster: {
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
     maxWidth: 320,
   },
-  scanEyebrow: {
+  scanHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
-  scanEyebrowText: {
-    ...BlurbTypography.small,
-    color: BlurbColors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
-  },
-  scanTitle: {
-    fontSize: 34,
-    lineHeight: 38,
+  scanHeaderText: {
+    fontSize: 28,
+    lineHeight: 32,
     fontWeight: '700',
     color: BlurbColors.text,
-    textAlign: 'center',
     fontFamily: 'Manrope',
   },
   scanCopy: {
