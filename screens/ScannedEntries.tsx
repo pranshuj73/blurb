@@ -3,7 +3,7 @@ import { ScannedEntry, storage } from '@/lib/storage';
 import { BlurbColors } from '@/theme/colors';
 import { BlurbTypography } from '@/theme/typography';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { ChevronLeft, ScanLine, Users } from 'lucide-react-native';
+import { Camera, ChevronLeft, Users } from 'lucide-react-native';
 import React, { useCallback, useRef, useState } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { Easing, FadeIn, FadeOut, SlideInDown, SlideOutDown } from 'react-native-reanimated';
@@ -45,6 +45,10 @@ export function ScannedEntries() {
     }, EXIT_DURATION_MS);
   }, [isClosing, router]);
 
+  const handleOpenScanner = useCallback(() => {
+    router.push('/scan');
+  }, [router]);
+
   const handlePress = useCallback(
     (entry: ScannedEntry) => {
       router.push({
@@ -65,6 +69,7 @@ export function ScannedEntries() {
         onPress={() => handlePress(item)}
         onLongPress={() => handlePress(item)}
         transparentContainer
+        compactPadding
       />
     ),
     [handlePress]
@@ -82,16 +87,18 @@ export function ScannedEntries() {
           style={[styles.sheet, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 24 }]}
         >
           <View style={styles.header}>
-            <TouchableOpacity style={styles.backButton} onPress={handleClose} activeOpacity={0.85}>
-              <ChevronLeft color={BlurbColors.text} size={18} />
-              <Text style={styles.backButtonText}>Back</Text>
-            </TouchableOpacity>
+            <View style={styles.headerActions}>
+              <TouchableOpacity style={styles.backButton} onPress={handleClose} activeOpacity={0.85}>
+                <ChevronLeft color={BlurbColors.text} size={18} />
+                <Text style={styles.backButtonText}>Back</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.scanButton} onPress={handleOpenScanner} activeOpacity={0.85}>
+                <Camera color={BlurbColors.textSecondary} size={18} />
+              </TouchableOpacity>
+            </View>
 
             <View style={styles.headerCopy}>
-              <View style={styles.titleRow}>
-                <ScanLine color={BlurbColors.textSecondary} size={18} />
-                <Text style={styles.title}>Scanned blurbs</Text>
-              </View>
+              <Text style={styles.title}>Scanned blurbs</Text>
               <Text style={styles.subtitle}>Scan a blurb and they&apos;ll appear here.</Text>
             </View>
           </View>
@@ -143,6 +150,11 @@ const styles = StyleSheet.create({
     paddingBottom: 18,
     gap: 16,
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   backButton: {
     alignSelf: 'flex-start',
     flexDirection: 'row',
@@ -155,18 +167,23 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.08)',
   },
+  scanButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
   backButtonText: {
     ...BlurbTypography.body,
     color: BlurbColors.text,
     fontWeight: '500',
   },
   headerCopy: {
-    paddingHorizontal: 6,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
+    paddingHorizontal: 0,
   },
   title: {
     fontSize: 32,
@@ -179,7 +196,6 @@ const styles = StyleSheet.create({
     ...BlurbTypography.small,
     color: 'rgba(255,255,255,0.58)',
     marginTop: 6,
-    marginLeft: 30,
   },
   listContent: {
     paddingBottom: 24,
