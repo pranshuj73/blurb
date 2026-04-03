@@ -200,7 +200,7 @@ export function EntriesList() {
                   style={[styles.scannedShortcut, { top: insets.top + SCREEN_HEIGHT * TOP_PADDING_PERCENT }]}
                 >
                   <ScanLine color={BlurbColors.textSecondary} size={15} />
-                  <Text style={styles.scannedShortcutText}>Recent scans</Text>
+                  <Text style={styles.scannedShortcutText}>Recent saves</Text>
                 </TouchableOpacity>
                 <View style={styles.headerDivider} />
               </View>

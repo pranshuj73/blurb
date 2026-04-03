@@ -126,7 +126,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingTop: 5,
     marginBottom: 18,
+    paddingBottom: 15,
   },
   iconButton: {
     width: 38,

@@ -98,7 +98,7 @@ export function ScannedEntries() {
             </View>
 
             <View style={styles.headerCopy}>
-              <Text style={styles.title}>Scanned blurbs</Text>
+              <Text style={styles.title}>Saved blurbs</Text>
               <Text style={styles.subtitle}>Scan a blurb and they&apos;ll appear here.</Text>
             </View>
           </View>
@@ -147,6 +147,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
   },
   header: {
+    paddingTop: 5,
     paddingBottom: 18,
     gap: 16,
   },
