@@ -152,7 +152,7 @@ export function ScanEntry() {
           <Text style={styles.backButtonText}>Back</Text>
         </TouchableOpacity>
 
-          <View style={styles.scanFrameSection}>
+        <View style={styles.scanFrameSection}>
           <View style={styles.scanPoster}>
             <View style={styles.scanHeader}>
               <ScanLine color={BlurbColors.text} size={22} />
