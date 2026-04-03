@@ -16,7 +16,12 @@ export interface Entry {
   accentColor?: string;
 }
 
+export interface ScannedEntry extends Entry {
+  scannedAt: number;
+}
+
 const STORAGE_KEY = '@blurb:entries';
+const SCANNED_STORAGE_KEY = '@blurb:scanned-entries';
 
 /**
  * Queue to prevent race conditions on concurrent storage operations
@@ -91,5 +96,42 @@ export const storage = {
 
     await storage.saveEntry(duplicated);
     return duplicated;
+  },
+
+  async getAllScannedEntries(): Promise<ScannedEntry[]> {
+    return storageQueue.enqueue(async () => {
+      try {
+        const data = await AsyncStorage.getItem(SCANNED_STORAGE_KEY);
+        if (!data) return [];
+        return JSON.parse(data);
+      } catch (error) {
+        console.error('Error loading scanned entries:', error);
+        return [];
+      }
+    });
+  },
+
+  async saveScannedEntry(entry: Omit<ScannedEntry, 'scannedAt'>): Promise<void> {
+    return storageQueue.enqueue(async () => {
+      const data = await AsyncStorage.getItem(SCANNED_STORAGE_KEY);
+      const entries: ScannedEntry[] = data ? JSON.parse(data) : [];
+      const index = entries.findIndex((existing) => existing.link === entry.link);
+      const nextEntry: ScannedEntry = {
+        ...entry,
+        scannedAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+
+      if (index >= 0) {
+        const existing = entries[index];
+        const updated = [...entries];
+        updated.splice(index, 1);
+        updated.unshift({ ...existing, ...nextEntry });
+        await AsyncStorage.setItem(SCANNED_STORAGE_KEY, JSON.stringify(updated));
+        return;
+      }
+
+      await AsyncStorage.setItem(SCANNED_STORAGE_KEY, JSON.stringify([nextEntry, ...entries]));
+    });
   },
 };

@@ -4,14 +4,9 @@ import { Entry, storage } from '@/lib/storage';
 import { BlurbColors } from '@/theme/colors';
 import { BlurbTypography } from '@/theme/typography';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { Camera, ScanLine } from 'lucide-react-native';
 import React, { useCallback, useRef, useState } from 'react';
-import {
-  Dimensions,
-  FlatList,
-  StyleSheet,
-  Text,
-  View
-} from 'react-native';
+import { Dimensions, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Extrapolation,
@@ -30,30 +25,30 @@ const TOP_PADDING_PERCENT = 0.25;
 export function EntriesList() {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [scrollOffset, setScrollOffset] = useState(0);
   const router = useRouter();
   const flatListRef = useRef<FlatList>(null);
-  const [scrollOffset, setScrollOffset] = useState(0);
   const insets = useSafeAreaInsets();
 
-  // Animation values
   const pullDistance = useSharedValue(0);
   const isPulling = useSharedValue(false);
+  const isOpeningScanned = useSharedValue(false);
 
   const loadEntries = useCallback(async () => {
     setIsLoading(true);
-    const loaded = await storage.getAllEntries();
-    setEntries(loaded);
+    const loadedEntries = await storage.getAllEntries();
+    setEntries(loadedEntries);
     setIsLoading(false);
   }, []);
 
   useFocusEffect(
     useCallback(() => {
       loadEntries();
-      // Reset gesture state when screen comes into focus
       pullDistance.value = 0;
       isPulling.value = false;
+      isOpeningScanned.value = false;
       setScrollOffset(0);
-    }, [loadEntries, pullDistance, isPulling])
+    }, [isOpeningScanned, isPulling, loadEntries, pullDistance])
   );
 
   const handleEntryPress = useCallback(
@@ -71,13 +66,16 @@ export function EntriesList() {
   );
 
   const handleAddEntry = useCallback(() => {
-    try {
-      router.push('/add-entry');
-    } catch (error) {
-      console.error('Error navigating to add-entry:', error);
-    }
+    router.push('/add-entry');
   }, [router]);
 
+  const handleOpenScanner = useCallback(() => {
+    router.push('/scan');
+  }, [router]);
+
+  const handleOpenScanned = useCallback(() => {
+    router.push('/scanned');
+  }, [router]);
 
   const pullGesture = Gesture.Pan()
     .activeOffsetY(30)
@@ -87,15 +85,11 @@ export function EntriesList() {
     .onStart(() => {
       if (scrollOffset <= 0) {
         isPulling.value = true;
-      } else {
-        // Fail the gesture immediately if not at top
-        return;
       }
     })
     .onChange((event) => {
       if (scrollOffset <= 0 && event.translationY > 0) {
-        const distance = Math.min(event.translationY, PULL_THRESHOLD * 1.5);
-        pullDistance.value = distance;
+        pullDistance.value = Math.min(event.translationY, PULL_THRESHOLD * 1.5);
       } else {
         pullDistance.value = 0;
         isPulling.value = false;
@@ -103,58 +97,46 @@ export function EntriesList() {
     })
     .onEnd((event) => {
       if (scrollOffset <= 0 && event.translationY > PULL_THRESHOLD) {
-        // Threshold crossed - navigate smoothly
-        pullDistance.value = withSpring(0, {
-          damping: 25,
-          stiffness: 200,
-        });
+        pullDistance.value = withSpring(0, { damping: 25, stiffness: 200 });
         runOnJS(handleAddEntry)();
       } else {
-        // Below threshold - spring back elegantly
-        pullDistance.value = withSpring(0, {
-          damping: 20,
-          stiffness: 180,
-        });
+        pullDistance.value = withSpring(0, { damping: 20, stiffness: 180 });
       }
       isPulling.value = false;
     })
     .onFinalize(() => {
-      pullDistance.value = withSpring(0, {
-        damping: 20,
-        stiffness: 180,
-      });
+      pullDistance.value = withSpring(0, { damping: 20, stiffness: 180 });
       isPulling.value = false;
     });
 
-  const indicatorOpacity = useAnimatedStyle(() => {
-    const opacity = interpolate(
-      pullDistance.value,
-      [0, 30, PULL_THRESHOLD],
-      [0, 0.3, 1],
-      Extrapolation.CLAMP
-    );
-    return { opacity };
-  });
+  const scannedGesture = Gesture.Pan()
+    .activeOffsetX([-24, 24])
+    .failOffsetY([-20, 20])
+    .onEnd((event) => {
+      if (isOpeningScanned.value) return;
+      if (event.translationX < -72 || event.velocityX < -780) {
+        isOpeningScanned.value = true;
+        runOnJS(handleOpenScanned)();
+      }
+    });
 
-  const indicatorTranslateY = useAnimatedStyle(() => {
-    const translateY = interpolate(
-      pullDistance.value,
-      [0, PULL_THRESHOLD],
-      [-60, 40],
-      Extrapolation.CLAMP
-    );
-    return { transform: [{ translateY }] };
-  });
+  const composedGesture = Gesture.Simultaneous(pullGesture, scannedGesture);
 
-  const textOpacity = useAnimatedStyle(() => {
-    const opacity = interpolate(
-      pullDistance.value,
-      [60, PULL_THRESHOLD],
-      [0, 1],
-      Extrapolation.CLAMP
-    );
-    return { opacity };
-  });
+  const indicatorOpacity = useAnimatedStyle(() => ({
+    opacity: interpolate(pullDistance.value, [0, 30, PULL_THRESHOLD], [0, 0.3, 1], Extrapolation.CLAMP),
+  }));
+
+  const indicatorTranslateY = useAnimatedStyle(() => ({
+    transform: [
+      {
+        translateY: interpolate(pullDistance.value, [0, PULL_THRESHOLD], [-60, 40], Extrapolation.CLAMP),
+      },
+    ],
+  }));
+
+  const textOpacity = useAnimatedStyle(() => ({
+    opacity: interpolate(pullDistance.value, [60, PULL_THRESHOLD], [0, 1], Extrapolation.CLAMP),
+  }));
 
   const renderEntry = useCallback(
     ({ item }: { item: Entry }) => (
@@ -164,7 +146,7 @@ export function EntriesList() {
         onLongPress={() => handleEntryLongPress(item)}
       />
     ),
-    [handleEntryPress, handleEntryLongPress]
+    [handleEntryLongPress, handleEntryPress]
   );
 
   const renderEmpty = useCallback(() => {
@@ -177,12 +159,11 @@ export function EntriesList() {
         </>
       );
     }
+
     return (
       <View style={styles.emptyContainer}>
         <Text style={styles.emptyTitle}>No entries yet</Text>
-        <Text style={styles.emptySubtitle}>
-          Pull down to add your first entry
-        </Text>
+        <Text style={styles.emptySubtitle}>Pull down to add your first entry</Text>
       </View>
     );
   }, [isLoading]);
@@ -190,49 +171,57 @@ export function EntriesList() {
   return (
     <View style={styles.container}>
       <Animated.View
-        style={[
-          styles.pullIndicator,
-          { paddingTop: insets.top + 8 },
-          indicatorOpacity,
-          indicatorTranslateY,
-        ]}
         pointerEvents="none"
+        style={[styles.pullIndicator, { paddingTop: insets.top + 8 }, indicatorOpacity, indicatorTranslateY]}
       >
         <View style={styles.indicatorLine} />
         <Animated.View style={[styles.indicatorText, textOpacity]}>
-          <Text style={styles.indicatorTextContent}>+ A D D  E N T R Y</Text>
+          <Text style={styles.indicatorTextContent}>+ A D D E N T R Y</Text>
         </Animated.View>
       </Animated.View>
-      <GestureDetector gesture={pullGesture}>
-        <FlatList
-          ref={flatListRef}
-          data={entries}
-          renderItem={renderEntry}
-          keyExtractor={(item) => item.id}
-          ListEmptyComponent={renderEmpty}
-          ListHeaderComponent={
-            <View style={[styles.header, { paddingTop: insets.top + SCREEN_HEIGHT * TOP_PADDING_PERCENT }]}>
-              <View style={styles.brandRow}>
-                <Text style={styles.brandText}>blurb</Text>
-                <Text style={styles.brandDot}>.</Text>
+
+      <GestureDetector gesture={composedGesture}>
+        <View style={styles.mainSurface}>
+          <FlatList
+            ref={flatListRef}
+            data={entries}
+            renderItem={renderEntry}
+            keyExtractor={(item) => item.id}
+            ListEmptyComponent={renderEmpty}
+            ListHeaderComponent={
+              <View style={[styles.header, { paddingTop: insets.top + SCREEN_HEIGHT * TOP_PADDING_PERCENT }]}>
+                <View style={styles.brandRow}>
+                  <Text style={styles.brandText}>blurb</Text>
+                  <Text style={styles.brandDot}>.</Text>
+                </View>
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={handleOpenScanned}
+                  style={[styles.scannedShortcut, { top: insets.top + SCREEN_HEIGHT * TOP_PADDING_PERCENT }]}
+                >
+                  <ScanLine color={BlurbColors.textSecondary} size={15} />
+                  <Text style={styles.scannedShortcutText}>Recent scans</Text>
+                </TouchableOpacity>
+                <View style={styles.headerDivider} />
               </View>
-              <View style={styles.headerDivider} />
-            </View>
-          }
-          contentContainerStyle={[
-            styles.listContent,
-            entries.length === 0 ? styles.emptyList : undefined,
-            { paddingBottom: 24 },
-          ]}
-          ListFooterComponent={<View style={styles.listFooter} />}
-          scrollEnabled={true}
-          onScroll={(event) => {
-            setScrollOffset(event.nativeEvent.contentOffset.y);
-          }}
-          scrollEventThrottle={16}
-          bounces={true}
-          bouncesZoom={false}
-        />
+            }
+            contentContainerStyle={[
+              styles.listContent,
+              entries.length === 0 ? styles.emptyList : undefined,
+              { paddingBottom: 136 },
+            ]}
+            ListFooterComponent={<View style={styles.listFooter} />}
+            onScroll={(event) => setScrollOffset(event.nativeEvent.contentOffset.y)}
+            scrollEventThrottle={16}
+            bounces
+          />
+
+          <View style={[styles.fabWrap, { bottom: insets.bottom + 28 }]}>
+            <TouchableOpacity style={styles.fabButton} onPress={handleOpenScanner} activeOpacity={0.9}>
+              <Camera color={BlurbColors.background} size={22} />
+            </TouchableOpacity>
+          </View>
+        </View>
       </GestureDetector>
     </View>
   );
@@ -242,6 +231,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: BlurbColors.background,
+  },
+  mainSurface: {
+    flex: 1,
   },
   listContent: {
     flexGrow: 1,
@@ -299,6 +291,7 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 24,
     paddingBottom: 16,
+    position: 'relative',
   },
   brandRow: {
     flexDirection: 'row',
@@ -319,9 +312,46 @@ const styles = StyleSheet.create({
     lineHeight: 38,
     fontFamily: 'Manrope',
   },
+  scannedShortcut: {
+    position: 'absolute',
+    right: 24,
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(28, 28, 30, 0.92)',
+    borderWidth: 1,
+    borderColor: BlurbColors.border,
+  },
+  scannedShortcutText: {
+    ...BlurbTypography.small,
+    color: BlurbColors.textSecondary,
+    letterSpacing: 0.5,
+  },
   headerDivider: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: BlurbColors.border,
     marginTop: 16,
+  },
+  fabWrap: {
+    position: 'absolute',
+    right: 22,
+    zIndex: 20,
+  },
+  fabButton: {
+    width: 62,
+    height: 62,
+    borderRadius: 31,
+    backgroundColor: '#F4F4F1',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 18,
+    elevation: 10,
   },
 });

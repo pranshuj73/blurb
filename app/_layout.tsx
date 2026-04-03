@@ -6,7 +6,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { ErrorBoundary } from 'react-error-boundary';
+import { ErrorBoundary, type FallbackProps } from 'react-error-boundary';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
@@ -24,11 +24,11 @@ export const unstable_settings = {
   anchor: '(tabs)',
 };
 
-function ErrorFallback({ error, resetErrorBoundary }: { error: Error; resetErrorBoundary: () => void }) {
+function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
   return (
     <View style={styles.errorContainer}>
       <Text style={styles.errorTitle}>Something went wrong</Text>
-      <Text style={styles.errorMessage}>{error.message}</Text>
+      <Text style={styles.errorMessage}>{error instanceof Error ? error.message : 'Unknown error'}</Text>
       <TouchableOpacity style={styles.errorButton} onPress={resetErrorBoundary}>
         <Text style={styles.errorButtonText}>Try again</Text>
       </TouchableOpacity>
@@ -97,6 +97,22 @@ export default function RootLayout() {
             />
             <Stack.Screen
               name="fullscreen-qr"
+              options={{
+                presentation: 'transparentModal',
+                headerShown: false,
+                animation: 'fade',
+              }}
+            />
+            <Stack.Screen
+              name="scan"
+              options={{
+                presentation: 'transparentModal',
+                headerShown: false,
+                animation: 'fade',
+              }}
+            />
+            <Stack.Screen
+              name="scanned"
               options={{
                 presentation: 'transparentModal',
                 headerShown: false,
