@@ -10,9 +10,10 @@ interface EntryRowProps {
   entry: Entry;
   onPress: () => void;
   onLongPress: () => void;
+  transparentContainer?: boolean;
 }
 
-export function EntryRow({ entry, onPress, onLongPress }: EntryRowProps) {
+export function EntryRow({ entry, onPress, onLongPress, transparentContainer = false }: EntryRowProps) {
   const host = useMemo(() => {
     try {
       return new URL(entry.link).hostname.replace(/^www\./, '');
@@ -27,7 +28,7 @@ export function EntryRow({ entry, onPress, onLongPress }: EntryRowProps) {
 
   return (
     <TouchableOpacity
-      style={styles.container}
+      style={[styles.container, transparentContainer && styles.containerTransparent]}
       onPress={onPress}
       onLongPress={onLongPress}
       activeOpacity={0.8}
@@ -77,6 +78,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 6,
     backgroundColor: BlurbColors.background,
+  },
+  containerTransparent: {
+    backgroundColor: 'transparent',
   },
   row: {
     flexDirection: 'row',
