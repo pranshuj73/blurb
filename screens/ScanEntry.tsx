@@ -148,26 +148,20 @@ export function ScanEntry() {
           <Text style={styles.backButtonText}>Back</Text>
         </TouchableOpacity>
 
-        <View style={styles.scanFrameSection}>
+          <View style={styles.scanFrameSection}>
           <View style={styles.scanPoster}>
             <View style={styles.scanHeader}>
-              <ScanLine color={BlurbColors.textSecondary} size={18} />
+              <ScanLine color={BlurbColors.text} size={22} />
               <Text style={styles.scanHeaderText}>Scan a blurb</Text>
             </View>
             <Text style={styles.scanCopy}>
-              We&apos;ll open a quick form so you can name it before saving.
+              {isProcessing ? 'Preparing preview...' : 'Hold steady while the QR enters the frame.'}
             </Text>
           </View>
 
           <View style={styles.scanFrame}>
             <View style={styles.scanFrameInner} />
           </View>
-        </View>
-
-        <View style={styles.footerHint}>
-          <Text style={styles.footerHintText}>
-            {isProcessing ? 'Preparing preview...' : 'Hold steady while the QR enters the frame.'}
-          </Text>
         </View>
       </Animated.View>
     </View>
@@ -182,7 +176,6 @@ const styles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
     flex: 1,
-    justifyContent: 'space-between',
     paddingHorizontal: 20,
   },
   overlayBackdrop: {
@@ -207,9 +200,10 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   scanFrameSection: {
+    flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 28,
-    marginTop: -54,
   },
   scanPoster: {
     alignItems: 'center',
@@ -248,13 +242,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'rgba(255,255,255,0.92)',
     backgroundColor: 'transparent',
-  },
-  footerHint: {
-    alignItems: 'center',
-  },
-  footerHintText: {
-    ...BlurbTypography.small,
-    color: 'rgba(255,255,255,0.78)',
   },
   centerState: {
     flex: 1,
