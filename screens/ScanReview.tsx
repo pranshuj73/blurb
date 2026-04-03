@@ -4,11 +4,12 @@ import { normalizeUrl } from '@/lib/utils/url';
 import { BlurbColors } from '@/theme/colors';
 import { BlurbTypography } from '@/theme/typography';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Check, X } from 'lucide-react-native';
+import { Check, ExternalLink, X } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import {
   Alert,
   Keyboard,
+  Linking,
   Platform,
   StyleSheet,
   Text,
@@ -109,6 +110,21 @@ export function ScanReview() {
     }
   };
 
+  const handleVisit = async () => {
+    const nextLink = link.trim();
+    if (!nextLink) {
+      Alert.alert('Missing link', 'Add a link before opening it.');
+      return;
+    }
+
+    try {
+      await Linking.openURL(normalizeUrl(nextLink));
+    } catch (error) {
+      console.error('Error opening scanned link:', error);
+      Alert.alert('Open failed', 'This link could not be opened.');
+    }
+  };
+
   return (
     <View style={styles.container}>
       <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(140)} style={styles.backdrop} />
@@ -172,15 +188,22 @@ export function ScanReview() {
             </View>
           </View>
 
-          <TouchableOpacity
-            style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
-            onPress={handleSave}
-            disabled={isSaving}
-            activeOpacity={0.88}
-          >
-            <Check color={BlurbColors.background} size={18} />
-            <Text style={styles.saveButtonText}>{isSaving ? 'Saving...' : 'Save blurb'}</Text>
-          </TouchableOpacity>
+          <View style={styles.actionsRow}>
+            <TouchableOpacity style={styles.visitButton} onPress={handleVisit} activeOpacity={0.88}>
+              <ExternalLink color={BlurbColors.text} size={17} />
+              <Text style={styles.visitButtonText}>Visit</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
+              onPress={handleSave}
+              disabled={isSaving}
+              activeOpacity={0.88}
+            >
+              <Check color={BlurbColors.background} size={18} />
+              <Text style={styles.saveButtonText}>{isSaving ? 'Saving...' : 'Save blurb'}</Text>
+            </TouchableOpacity>
+          </View>
         </Animated.View>
       </View>
     </View>
@@ -271,8 +294,31 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     fontFamily: 'Inter',
   },
-  saveButton: {
+  actionsRow: {
     marginTop: 16,
+    marginBottom: 4,
+    flexDirection: 'row',
+    gap: 12,
+  },
+  visitButton: {
+    flex: 1,
+    height: 54,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  visitButtonText: {
+    ...BlurbTypography.body,
+    color: BlurbColors.text,
+    fontWeight: '600',
+  },
+  saveButton: {
+    flex: 1,
     marginBottom: 4,
     height: 54,
     borderRadius: 18,
