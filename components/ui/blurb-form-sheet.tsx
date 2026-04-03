@@ -76,7 +76,7 @@ export function BlurbFormSheet({ title, onClose, height = 'fit', children, foote
             styles.sheet,
             heightStyle,
             {
-              paddingTop: insets.top + 18,
+              paddingTop: 18,
               paddingBottom: insets.bottom + 24,
             },
           ]}
@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   footer: {
-    marginTop: 16,
+    marginTop: 22,
     marginBottom: 4,
   },
 });

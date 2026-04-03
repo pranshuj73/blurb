@@ -84,7 +84,7 @@ export function ScannedEntries() {
         <Animated.View
           entering={SlideInDown.duration(220).easing(Easing.out(Easing.cubic))}
           exiting={SlideOutDown.duration(EXIT_DURATION_MS).easing(Easing.in(Easing.cubic))}
-          style={[styles.sheet, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 24 }]}
+          style={[styles.sheet, { paddingTop: 20, paddingBottom: insets.bottom + 24 }]}
         >
           <View style={styles.header}>
             <View style={styles.headerActions}>
@@ -154,6 +154,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingBottom: 30,
   },
   backButton: {
     alignSelf: 'flex-start',
