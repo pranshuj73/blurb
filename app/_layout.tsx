@@ -12,6 +12,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { AppAlertProvider } from '@/components/ui/app-alert-provider';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { BlurbColors } from '@/theme/colors';
 import { BlurbTypography } from '@/theme/typography';
@@ -77,59 +78,77 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>
           <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-            <Stack>
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen
-              name="add-entry"
-              options={{
-                presentation: 'transparentModal',
-                headerShown: false,
-                animation: 'fade',
-              }}
-            />
-            <Stack.Screen
-              name="preview"
-              options={{
-                presentation: 'transparentModal',
-                headerShown: false,
-                animation: 'fade',
-              }}
-            />
-            <Stack.Screen
-              name="fullscreen-qr"
-              options={{
-                presentation: 'transparentModal',
-                headerShown: false,
-                animation: 'fade',
-              }}
-            />
-            <Stack.Screen
-              name="scan"
-              options={{
-                presentation: 'transparentModal',
-                headerShown: false,
-                animation: 'fade',
-              }}
-            />
-            <Stack.Screen
-              name="scan-review"
-              options={{
-                presentation: 'transparentModal',
-                headerShown: false,
-                animation: 'none',
-              }}
-            />
-            <Stack.Screen
-              name="scanned"
-              options={{
-                presentation: 'transparentModal',
-                headerShown: false,
-                animation: 'fade',
-              }}
-            />
-              <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-            </Stack>
-            <StatusBar style="light" />
+            <AppAlertProvider>
+              <Stack>
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen
+                name="add-entry"
+                options={{
+                  presentation: 'transparentModal',
+                  headerShown: false,
+                  animation: 'fade',
+                }}
+              />
+              <Stack.Screen
+                name="preview"
+                options={{
+                  presentation: 'transparentModal',
+                  headerShown: false,
+                  animation: 'fade',
+                }}
+              />
+              <Stack.Screen
+                name="fullscreen-qr"
+                options={{
+                  presentation: 'transparentModal',
+                  headerShown: false,
+                  animation: 'fade',
+                }}
+              />
+              <Stack.Screen
+                name="scan"
+                options={{
+                  presentation: 'transparentModal',
+                  headerShown: false,
+                  animation: 'fade',
+                }}
+              />
+              <Stack.Screen
+                name="scan-review"
+                options={{
+                  presentation: 'transparentModal',
+                  headerShown: false,
+                  animation: 'none',
+                }}
+              />
+              <Stack.Screen
+                name="edit-entry-blurb"
+                options={{
+                  presentation: 'transparentModal',
+                  headerShown: false,
+                  animation: 'none',
+                }}
+              />
+              <Stack.Screen
+                name="edit-scanned-blurb"
+                options={{
+                  presentation: 'transparentModal',
+                  headerShown: false,
+                  animation: 'none',
+                }}
+              />
+              <Stack.Screen
+                name="scanned"
+                options={{
+                  presentation: 'transparentModal',
+                  headerShown: false,
+                  animation: 'fade',
+                }}
+              />
+                <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+              </Stack>
+              <StatusBar style="light" />
+            </AppAlertProvider>
           </ThemeProvider>
         </GestureHandlerRootView>
       </SafeAreaProvider>

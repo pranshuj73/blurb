@@ -134,4 +134,13 @@ export const storage = {
       await AsyncStorage.setItem(SCANNED_STORAGE_KEY, JSON.stringify([nextEntry, ...entries]));
     });
   },
+
+  async deleteScannedEntry(link: string): Promise<void> {
+    return storageQueue.enqueue(async () => {
+      const data = await AsyncStorage.getItem(SCANNED_STORAGE_KEY);
+      const entries: ScannedEntry[] = data ? JSON.parse(data) : [];
+      const filtered = entries.filter((entry) => entry.link !== link);
+      await AsyncStorage.setItem(SCANNED_STORAGE_KEY, JSON.stringify(filtered));
+    });
+  },
 };

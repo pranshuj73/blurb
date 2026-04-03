@@ -1,4 +1,5 @@
 import { IconPicker } from '@/components/icon-picker';
+import { useAppAlert } from '@/components/ui/app-alert-provider';
 import { ThemedIcon } from '@/components/entry/themed-icon';
 import { scrapeMetadata } from '@/lib/scraping';
 import { Entry, storage } from '@/lib/storage';
@@ -13,7 +14,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Dimensions,
   KeyboardAvoidingView,
   Platform,
@@ -54,6 +54,7 @@ function getDomainSeed(rawUrl: string) {
 
 export function AddEntry() {
   const router = useRouter();
+  const { showAlert } = useAppAlert();
   const params = useLocalSearchParams<{ id?: string }>();
   const isEditing = !!params.id;
   const insets = useSafeAreaInsets();
@@ -74,7 +75,7 @@ export function AddEntry() {
   const [isScraping, setIsScraping] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<number>(0);
-  const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const SYNC_COOLDOWN_MS = 2000; // 2 seconds between sync requests
 
@@ -115,7 +116,10 @@ export function AddEntry() {
     const timeSinceLastSync = now - lastSyncTime;
     if (timeSinceLastSync < SYNC_COOLDOWN_MS) {
       const remainingSeconds = Math.ceil((SYNC_COOLDOWN_MS - timeSinceLastSync) / 1000);
-      Alert.alert('Please Wait', `Please wait ${remainingSeconds} second${remainingSeconds > 1 ? 's' : ''} before syncing again.`);
+      await showAlert({
+        title: 'Please wait',
+        message: `Please wait ${remainingSeconds} second${remainingSeconds > 1 ? 's' : ''} before syncing again.`,
+      });
       return;
     }
 
@@ -128,7 +132,10 @@ export function AddEntry() {
         syncTimeoutRef.current = null;
       }
       setIsScraping(false);
-      Alert.alert('Sync Failed', 'Failed to fetch link contents. Please try again.');
+      void showAlert({
+        title: 'Sync failed',
+        message: 'Failed to fetch link contents. Please try again.',
+      });
     }, 5000);
 
     try {
@@ -155,7 +162,10 @@ export function AddEntry() {
       }
     } catch (error) {
       console.error('Error scraping metadata:', error);
-      Alert.alert('Sync Failed', 'Failed to fetch link contents. Please try again.');
+      await showAlert({
+        title: 'Sync failed',
+        message: 'Failed to fetch link contents. Please try again.',
+      });
     } finally {
       // Always clear timeout and reset state
       if (syncTimeoutRef.current) {
@@ -196,31 +206,28 @@ export function AddEntry() {
 
     // Validate URL format
     if (!isValidUrl(link.trim())) {
-      Alert.alert(
-        'Invalid URL',
-        'Please enter a valid URL. Make sure it includes a domain name (e.g., example.com or https://example.com)',
-        [{ text: 'OK' }]
-      );
+      void showAlert({
+        title: 'Invalid URL',
+        message: 'Please enter a valid URL. Make sure it includes a domain name (e.g., example.com or https://example.com)',
+      });
       return;
     }
 
     // Security check for suspicious URLs
     if (isSuspiciousUrl(link.trim())) {
-      Alert.alert(
-        'Suspicious URL Detected',
-        'This URL uses a potentially dangerous protocol (javascript:, data:, file:, vbscript:). Creating a QR code for this URL may pose security risks.\n\nAre you sure you want to continue?',
-        [
-          {
-            text: 'Cancel',
-            style: 'cancel',
-          },
-          {
-            text: 'Continue Anyway',
-            style: 'destructive',
-            onPress: () => proceedWithPreview(),
-          },
-        ]
-      );
+      void showAlert({
+        title: 'Suspicious URL detected',
+        message:
+          'This URL uses a potentially dangerous protocol (javascript:, data:, file:, vbscript:). Creating a QR code for this URL may pose security risks.',
+        actions: [
+          { label: 'Cancel', style: 'cancel', value: 'cancel' },
+          { label: 'Continue anyway', style: 'destructive', value: 'continue' },
+        ],
+      }).then((result) => {
+        if (result === 'continue') {
+          proceedWithPreview();
+        }
+      });
       return;
     }
 
@@ -275,31 +282,28 @@ export function AddEntry() {
 
     // Validate URL format
     if (!isValidUrl(link.trim())) {
-      Alert.alert(
-        'Invalid URL',
-        'Please enter a valid URL. Make sure it includes a domain name (e.g., example.com or https://example.com)',
-        [{ text: 'OK' }]
-      );
+      void showAlert({
+        title: 'Invalid URL',
+        message: 'Please enter a valid URL. Make sure it includes a domain name (e.g., example.com or https://example.com)',
+      });
       return;
     }
 
     // Security check for suspicious URLs
     if (isSuspiciousUrl(link.trim())) {
-      Alert.alert(
-        'Suspicious URL Detected',
-        'This URL uses a potentially dangerous protocol (javascript:, data:, file:, vbscript:). Saving this entry may pose security risks.\n\nAre you sure you want to continue?',
-        [
-          {
-            text: 'Cancel',
-            style: 'cancel',
-          },
-          {
-            text: 'Save Anyway',
-            style: 'destructive',
-            onPress: () => proceedWithSave(),
-          },
-        ]
-      );
+      void showAlert({
+        title: 'Suspicious URL detected',
+        message:
+          'This URL uses a potentially dangerous protocol (javascript:, data:, file:, vbscript:). Saving this entry may pose security risks.',
+        actions: [
+          { label: 'Cancel', style: 'cancel', value: 'cancel' },
+          { label: 'Save anyway', style: 'destructive', value: 'save' },
+        ],
+      }).then((result) => {
+        if (result === 'save') {
+          proceedWithSave();
+        }
+      });
       return;
     }
 
@@ -314,7 +318,10 @@ export function AddEntry() {
     try {
       const existingEntry = await storage.getEntry(params.id);
       if (!existingEntry) {
-        Alert.alert('Error', 'Entry not found');
+        await showAlert({
+          title: 'Error',
+          message: 'Entry not found',
+        });
         return;
       }
 
@@ -358,7 +365,10 @@ export function AddEntry() {
       );
     } catch (error) {
       console.error('Error saving entry:', error);
-      Alert.alert('Error', 'Failed to save entry. Please try again.');
+      await showAlert({
+        title: 'Error',
+        message: 'Failed to save entry. Please try again.',
+      });
     } finally {
       setIsSaving(false);
     }
@@ -369,45 +379,40 @@ export function AddEntry() {
       return;
     }
 
-    Alert.alert(
-      'Delete Entry',
-      `Are you sure you want to delete "${title || 'this entry'}"? This action cannot be undone.`,
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await storage.deleteEntry(params.id!);
-
-              // Animate out
-              drawerOffset.value = withSpring(
-                SCREEN_HEIGHT,
-                {
-                  damping: 30,
-                  stiffness: 300,
-                  mass: 0.7,
-                },
-                (finished) => {
-                  'worklet';
-                  if (finished) {
-                    runOnJS(router.back)();
-                  }
-                }
-              );
-            } catch (error) {
-              console.error('Error deleting entry:', error);
-              Alert.alert('Error', 'Failed to delete entry. Please try again.');
-            }
+    void showAlert({
+      title: 'Delete entry',
+      message: `Are you sure you want to delete "${title || 'this entry'}"? This action cannot be undone.`,
+      actions: [
+        { label: 'Cancel', style: 'cancel', value: 'cancel' },
+        { label: 'Delete', style: 'destructive', value: 'delete' },
+      ],
+    }).then(async (result) => {
+      if (result !== 'delete') return;
+      try {
+        await storage.deleteEntry(params.id!);
+        drawerOffset.value = withSpring(
+          SCREEN_HEIGHT,
+          {
+            damping: 30,
+            stiffness: 300,
+            mass: 0.7,
           },
-        },
-      ]
-    );
-  }, [params.id, title, router, drawerOffset]);
+          (finished) => {
+            'worklet';
+            if (finished) {
+              runOnJS(router.back)();
+            }
+          }
+        );
+      } catch (error) {
+        console.error('Error deleting entry:', error);
+        await showAlert({
+          title: 'Error',
+          message: 'Failed to delete entry. Please try again.',
+        });
+      }
+    });
+  }, [params.id, title, router, drawerOffset, showAlert]);
 
   const handleDismiss = useCallback(() => {
     // Animate out

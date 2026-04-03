@@ -1,3 +1,4 @@
+import { useAppAlert } from '@/components/ui/app-alert-provider';
 import { scrapeMetadata } from '@/lib/scraping';
 import { ScannedEntry } from '@/lib/storage';
 import { cacheFavicon } from '@/lib/utils/favicon-cache';
@@ -10,7 +11,6 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   StatusBar,
   StyleSheet,
   Text,
@@ -33,6 +33,7 @@ function getScannedLabel(rawValue: string) {
 
 export function ScanEntry() {
   const router = useRouter();
+  const { showAlert } = useAppAlert();
   const insets = useSafeAreaInsets();
   const [permission, requestPermission] = useCameraPermissions();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -88,7 +89,10 @@ export function ScanEntry() {
       });
     } catch (error) {
       console.error('Error saving scanned QR:', error);
-      Alert.alert('Scan failed', 'The QR was detected, but the draft could not be prepared.');
+      await showAlert({
+        title: 'Scan failed',
+        message: 'The QR was detected, but the draft could not be prepared.',
+      });
       hasHandledScanRef.current = false;
       setIsProcessing(false);
     }
