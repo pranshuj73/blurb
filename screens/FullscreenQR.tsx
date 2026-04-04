@@ -1,6 +1,7 @@
 import { Entry, storage } from '@/lib/storage';
 import { normalizeUrl } from '@/lib/utils/url';
 import { getQRLayout, QRSizing } from '@/lib/utils/qr-layout';
+import { getTrackedQrUrl } from '@/lib/utils/tracked-url';
 import { BlurbColors } from '@/theme/colors';
 import { ThemedIcon } from '@/components/entry/themed-icon';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -237,6 +238,7 @@ export function FullscreenQR() {
   }
 
   const titleText = entry.title || 'Untitled';
+  const qrValue = getTrackedQrUrl(entry.link);
 
   return (
     <Animated.View style={[styles.container, screenStyle]}>
@@ -332,7 +334,7 @@ export function FullscreenQR() {
                   >
                     <View style={[styles.qrShellInner, { borderRadius: innerRadius }]}>
                       <QRCode
-                        value={entry.link}
+                        value={qrValue}
                         size={qrSize}
                         color={BlurbColors.qrForeground}
                         backgroundColor={BlurbColors.qrBackground}

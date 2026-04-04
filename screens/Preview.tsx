@@ -4,6 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Subheading } from '@/components/ui/subheading';
 import { Entry, ScannedEntry, storage } from '@/lib/storage';
 import { getAccentColorFromFavicon } from '@/lib/utils/favicon-color';
+import { getTrackedQrUrl } from '@/lib/utils/tracked-url';
 import { BlurbColors } from '@/theme/colors';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { ChevronLeft, ExternalLink, Pencil } from 'lucide-react-native';
@@ -182,6 +183,7 @@ export function Preview() {
   const previewInnerWidth = screenWidth - 96;
   const qrSize = Math.round(Math.min(Math.max(previewInnerWidth, 280), 360) * 0.82);
   const displayLink = entry.link.replace(/^https?:\/\//, '');
+  const qrValue = isScannedEntry ? entry.link : getTrackedQrUrl(entry.link);
 
   return (
     <Animated.View style={[styles.container, screenStyle]}>
@@ -234,7 +236,7 @@ export function Preview() {
           <View style={styles.qrWrapper}>
             <View style={styles.qrContainer}>
               <QRCode
-                value={entry.link}
+                value={qrValue}
                 size={qrSize}
                 color={BlurbColors.qrForeground}
                 backgroundColor={BlurbColors.qrBackground}
