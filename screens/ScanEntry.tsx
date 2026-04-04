@@ -32,12 +32,14 @@ function getScannedLabel(rawValue: string) {
 }
 
 export function ScanEntry() {
+  const SCAN_RESUME_DELAY_MS = 1000;
   const router = useRouter();
   const { showAlert } = useAppAlert();
   const insets = useSafeAreaInsets();
   const [permission, requestPermission] = useCameraPermissions();
   const [isProcessing, setIsProcessing] = useState(false);
   const hasHandledScanRef = useRef(false);
+  const scanBlockedUntilRef = useRef(0);
 
   useEffect(() => {
     if (!permission) {
@@ -49,6 +51,7 @@ export function ScanEntry() {
     React.useCallback(() => {
       hasHandledScanRef.current = false;
       setIsProcessing(false);
+      scanBlockedUntilRef.current = Date.now() + SCAN_RESUME_DELAY_MS;
     }, [])
   );
 
@@ -71,7 +74,7 @@ export function ScanEntry() {
   };
 
   const handleBarcodeScanned = async ({ data }: BarcodePayload) => {
-    if (!data || isProcessing || hasHandledScanRef.current) {
+    if (!data || isProcessing || hasHandledScanRef.current || Date.now() < scanBlockedUntilRef.current) {
       return;
     }
 
