@@ -11,7 +11,7 @@ import { BlurbColors } from '@/theme/colors';
 import { BlurbTypography } from '@/theme/typography';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Check, RefreshCw } from 'lucide-react-native';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export function ScanReview() {
@@ -35,6 +35,15 @@ export function ScanReview() {
   const [isSaving, setIsSaving] = useState(false);
   const [isSyncingIcon, setIsSyncingIcon] = useState(false);
   const [showIconPicker, setShowIconPicker] = useState(false);
+
+  useEffect(() => {
+    if (!entry) return;
+    setTitle(entry.title ?? '');
+    setLink(entry.link ?? '');
+    setIconUri(entry.iconUri);
+    setIconType(entry.iconType ?? (entry.iconUri ? 'image' : 'lucide'));
+    setAccentColor(entry.accentColor);
+  }, [entry]);
 
   const handleSave = async () => {
     const nextTitle = title.trim();

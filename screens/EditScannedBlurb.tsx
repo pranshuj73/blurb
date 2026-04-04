@@ -10,14 +10,14 @@ import { normalizeUrl } from '@/lib/utils/url';
 import { BlurbColors } from '@/theme/colors';
 import { BlurbTypography } from '@/theme/typography';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Check, RefreshCw, Trash2 } from 'lucide-react-native';
-import React, { useMemo, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Check, ExternalLink, RefreshCw, Trash2 } from 'lucide-react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export function EditScannedBlurb() {
   const router = useRouter();
   const { showAlert } = useAppAlert();
-  const params = useLocalSearchParams<{ entry?: string }>();
+  const params = useLocalSearchParams<{ entry?: string; title?: string }>();
 
   const entry = useMemo(() => {
     try {
@@ -35,6 +35,16 @@ export function EditScannedBlurb() {
   const [isSaving, setIsSaving] = useState(false);
   const [isSyncingIcon, setIsSyncingIcon] = useState(false);
   const [showIconPicker, setShowIconPicker] = useState(false);
+  const isExistingScanEdit = params.title === 'Edit existing blurb';
+
+  useEffect(() => {
+    if (!entry) return;
+    setTitle(entry.title ?? '');
+    setLink(entry.link ?? '');
+    setIconUri(entry.iconUri);
+    setIconType(entry.iconType ?? (entry.iconUri ? 'image' : 'lucide'));
+    setAccentColor(entry.accentColor);
+  }, [entry]);
 
   const handleSave = async () => {
     const nextTitle = title.trim();
@@ -182,17 +192,36 @@ export function EditScannedBlurb() {
     router.back();
   };
 
+  const handleVisit = async () => {
+    try {
+      await Linking.openURL(normalizeUrl(link));
+    } catch (error) {
+      console.error('Error opening link:', error);
+      await showAlert({
+        title: 'Open failed',
+        message: 'This link could not be opened.',
+      });
+    }
+  };
+
   return (
     <BlurbFormSheet
-      title="Edit blurb"
+      title={params.title || 'Edit blurb'}
       onClose={() => router.back()}
       height="fit"
       footer={
         <View style={styles.actionsRow}>
-          <TouchableOpacity style={styles.deleteButton} onPress={handleDelete} activeOpacity={0.88}>
-            <Trash2 color="#FF6B6B" size={17} />
-            <Text style={styles.deleteButtonText}>Delete</Text>
-          </TouchableOpacity>
+          {isExistingScanEdit ? (
+            <TouchableOpacity style={styles.secondaryButton} onPress={handleVisit} activeOpacity={0.88}>
+              <ExternalLink color={BlurbColors.text} size={17} />
+              <Text style={styles.secondaryButtonText}>Visit</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={styles.deleteButton} onPress={handleDelete} activeOpacity={0.88}>
+              <Trash2 color="#FF6B6B" size={17} />
+              <Text style={styles.deleteButtonText}>Delete</Text>
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity
             style={[styles.primaryButton, isSaving && styles.buttonDisabled]}
@@ -243,6 +272,23 @@ const styles = StyleSheet.create({
   deleteButtonText: {
     ...BlurbTypography.body,
     color: '#FF6B6B',
+    fontWeight: '600',
+  },
+  secondaryButton: {
+    flex: 1,
+    height: 54,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  secondaryButtonText: {
+    ...BlurbTypography.body,
+    color: BlurbColors.text,
     fontWeight: '600',
   },
   counterText: {

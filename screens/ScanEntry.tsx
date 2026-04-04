@@ -1,6 +1,6 @@
 import { useAppAlert } from '@/components/ui/app-alert-provider';
 import { scrapeMetadata } from '@/lib/scraping';
-import { ScannedEntry } from '@/lib/storage';
+import { Entry, ScannedEntry, storage } from '@/lib/storage';
 import { cacheFavicon } from '@/lib/utils/favicon-cache';
 import { normalizeUrl } from '@/lib/utils/url';
 import { BlurbColors } from '@/theme/colors';
@@ -22,6 +22,19 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft, ScanLine } from 'lucide-react-native';
 
 type BarcodePayload = { data?: string };
+
+function getComparableUrl(rawValue: string) {
+  try {
+    const url = new URL(normalizeUrl(rawValue));
+    url.hash = '';
+    if (url.pathname !== '/' && url.pathname.endsWith('/')) {
+      url.pathname = url.pathname.slice(0, -1);
+    }
+    return url.toString();
+  } catch {
+    return normalizeUrl(rawValue).replace(/\/+$/, '');
+  }
+}
 
 function getScannedLabel(rawValue: string) {
   try {
@@ -82,7 +95,44 @@ export function ScanEntry() {
     setIsProcessing(true);
 
     try {
-      const scannedEntry = await handleCreateScanDraft(data);
+      const normalizedLink = normalizeUrl(data);
+      const comparableLink = getComparableUrl(normalizedLink);
+      const [savedEntries, scannedEntries] = await Promise.all([
+        storage.getAllEntries(),
+        storage.getAllScannedEntries(),
+      ]);
+
+      const existingScannedEntry = scannedEntries.find(
+        (entry: ScannedEntry) => getComparableUrl(entry.link) === comparableLink
+      );
+      if (existingScannedEntry) {
+        setIsProcessing(false);
+        router.push({
+          pathname: '/edit-scanned-blurb',
+          params: {
+            entry: JSON.stringify(existingScannedEntry),
+            title: 'Edit existing blurb',
+          },
+        });
+        return;
+      }
+
+      const existingSavedEntry = savedEntries.find(
+        (entry: Entry) => getComparableUrl(entry.link) === comparableLink
+      );
+      if (existingSavedEntry) {
+        setIsProcessing(false);
+        router.push({
+          pathname: '/edit-entry-blurb',
+          params: {
+            entry: JSON.stringify(existingSavedEntry),
+            title: 'Edit existing blurb',
+          },
+        });
+        return;
+      }
+
+      const scannedEntry = await handleCreateScanDraft(normalizedLink);
       setIsProcessing(false);
       router.push({
         pathname: '/scan-review',
