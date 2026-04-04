@@ -181,6 +181,7 @@ export function Preview() {
 
   const previewInnerWidth = screenWidth - 96;
   const qrSize = Math.round(Math.min(Math.max(previewInnerWidth, 280), 360) * 0.82);
+  const displayLink = entry.link.replace(/^https?:\/\//, '');
 
   return (
     <Animated.View style={[styles.container, screenStyle]}>
@@ -209,9 +210,9 @@ export function Preview() {
         <View style={styles.preview}>
           <View style={styles.previewHeader}>
             {entry.iconUri ? (
-              <ThemedIcon uri={entry.iconUri} iconType={entry.iconType} size={44} />
+              <ThemedIcon uri={entry.iconUri} iconType={entry.iconType} size={40} />
             ) : (
-              <ThemedIcon uri="Link" iconType="lucide" size={44} />
+              <ThemedIcon uri="Link" iconType="lucide" size={40} />
             )}
             <View style={styles.titleSection}>
               {isTitleEditable ? (
@@ -241,13 +242,11 @@ export function Preview() {
             </View>
           </View>
 
-          <View style={styles.divider} />
-
           <View style={styles.metadata}>
             <Label size="xs">Link</Label>
             <View style={styles.linkRow}>
               <Text style={styles.metadataValue} selectable numberOfLines={2}>
-                {entry.link}
+                {displayLink}
               </Text>
               <TouchableOpacity style={styles.visitButton} onPress={handleVisit} activeOpacity={0.85}>
                 <ExternalLink color={BlurbColors.text} size={16} />
@@ -372,7 +371,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'center',
-    marginBottom: 28,
+    marginBottom: 24,
     gap: 16,
   },
   titleSection: {
@@ -412,7 +411,6 @@ const styles = StyleSheet.create({
     aspectRatio: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 28,
     padding: 18,
     backgroundColor: BlurbColors.qrBackground,
     borderRadius: 28,
@@ -425,12 +423,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 20,
   },
-  divider: {
-    height: 1,
-    backgroundColor: BlurbColors.divider,
-    marginBottom: 28,
-  },
   metadata: {
+    marginTop: 24,
     gap: 6,
   },
   linkRow: {
