@@ -1,4 +1,4 @@
-import { BlurbFormFields } from '@/components/ui/blurb-form-fields';
+import { BlurbFormField, BlurbFormFields } from '@/components/ui/blurb-form-fields';
 import { BlurbFormSheet } from '@/components/ui/blurb-form-sheet';
 import { useAppAlert } from '@/components/ui/app-alert-provider';
 import { IconPicker } from '@/components/icon-picker';
@@ -10,7 +10,7 @@ import { normalizeUrl } from '@/lib/utils/url';
 import { BlurbColors } from '@/theme/colors';
 import { BlurbTypography } from '@/theme/typography';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Check, Trash2 } from 'lucide-react-native';
+import { Check, RefreshCw, Trash2 } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -35,8 +35,6 @@ export function EditScannedBlurb() {
   const [isSaving, setIsSaving] = useState(false);
   const [isSyncingIcon, setIsSyncingIcon] = useState(false);
   const [showIconPicker, setShowIconPicker] = useState(false);
-
-  if (!entry) return null;
 
   const handleSave = async () => {
     const nextTitle = title.trim();
@@ -127,6 +125,47 @@ export function EditScannedBlurb() {
     void getAccentColorFromFavicon(undefined, getDomainSeed(link || title || entry.link)).then(setAccentColor);
   };
 
+  if (!entry) return null;
+
+  const fields: BlurbFormField[] = [
+    {
+      key: 'name',
+      label: 'Name',
+      headerRight: (
+        <Text style={styles.counterText}>
+          {title.length}/100
+        </Text>
+      ),
+      value: title,
+      onChange: setTitle,
+      placeholder: 'Enter a name',
+      maxLength: 100,
+      autoCapitalize: 'words',
+      autoCorrect: false,
+    },
+    {
+      key: 'link',
+      label: 'Link',
+      value: link,
+      onChange: setLink,
+      placeholder: 'https://',
+      maxLength: 2048,
+      keyboardType: 'url',
+      autoCapitalize: 'none',
+      autoCorrect: false,
+      trailing: (
+        <TouchableOpacity
+          style={[styles.trailingButton, (!link.trim() || isSyncingIcon) && styles.trailingButtonDisabled]}
+          onPress={handleSyncFavicon}
+          disabled={!link.trim() || isSyncingIcon}
+          activeOpacity={0.88}
+        >
+          <RefreshCw color={BlurbColors.text} size={15} />
+        </TouchableOpacity>
+      ),
+    },
+  ];
+
   const handleDelete = async () => {
     const result = await showAlert({
       title: 'Delete blurb',
@@ -170,13 +209,8 @@ export function EditScannedBlurb() {
       <BlurbFormFields
         iconUri={iconUri}
         iconType={iconType}
-        title={title}
-        onTitleChange={setTitle}
-        link={link}
-        onLinkChange={setLink}
-        onSyncFavicon={handleSyncFavicon}
+        fields={fields}
         onPressIcon={() => setShowIconPicker(true)}
-        isSyncingIcon={isSyncingIcon}
       />
       <IconPicker
         visible={showIconPicker}
@@ -211,6 +245,11 @@ const styles = StyleSheet.create({
     color: '#FF6B6B',
     fontWeight: '600',
   },
+  counterText: {
+    ...BlurbTypography.small,
+    color: BlurbColors.textTertiary,
+    fontSize: 12,
+  },
   primaryButton: {
     flex: 1,
     height: 54,
@@ -227,6 +266,19 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   buttonDisabled: {
+    opacity: 0.7,
+  },
+  trailingButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  trailingButtonDisabled: {
     opacity: 0.7,
   },
 });

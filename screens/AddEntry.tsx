@@ -1,5 +1,6 @@
 import { IconPicker } from '@/components/icon-picker';
 import { useAppAlert } from '@/components/ui/app-alert-provider';
+import { BlurbFormField, BlurbFormFields } from '@/components/ui/blurb-form-fields';
 import { ThemedIcon } from '@/components/entry/themed-icon';
 import { scrapeMetadata } from '@/lib/scraping';
 import { Entry, storage } from '@/lib/storage';
@@ -20,11 +21,11 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { ChevronLeft, Image as ImageIcon, RefreshCw, Shapes } from 'lucide-react-native';
 import Animated, {
   Extrapolation,
   interpolate,
@@ -502,36 +503,6 @@ export function AddEntry() {
     };
   });
 
-  const indicatorOpacity = useAnimatedStyle(() => {
-    const opacity = interpolate(
-      pullDistance.value,
-      [0, 30, DISMISS_THRESHOLD],
-      [0, 0.3, 1],
-      Extrapolation.CLAMP
-    );
-    return { opacity };
-  });
-
-  const indicatorTranslateY = useAnimatedStyle(() => {
-    const translateY = interpolate(
-      pullDistance.value,
-      [0, DISMISS_THRESHOLD],
-      [-60, 40],
-      Extrapolation.CLAMP
-    );
-    return { transform: [{ translateY }] };
-  });
-
-  const textOpacity = useAnimatedStyle(() => {
-    const opacity = interpolate(
-      pullDistance.value,
-      [60, DISMISS_THRESHOLD],
-      [0, 1],
-      Extrapolation.CLAMP
-    );
-    return { opacity };
-  });
-
   // Animate in on mount with smooth spring
   useEffect(() => {
     drawerOffset.value = withSpring(0, {
@@ -541,18 +512,76 @@ export function AddEntry() {
     });
   }, [drawerOffset]);
 
+  const addEntryFields: BlurbFormField[] = [
+    {
+      key: 'url',
+      label: 'URL',
+      value: link,
+      onChange: setLink,
+      placeholder: 'https://...',
+      maxLength: MAX_URL_LENGTH,
+      keyboardType: 'url',
+      autoCapitalize: 'none',
+      autoCorrect: false,
+      editable: !isScraping,
+      trailing: (
+        <TouchableOpacity
+          style={[styles.trailingButton, (!link.trim() || isScraping) && styles.trailingButtonDisabled]}
+          onPress={handleSyncMetadata}
+          disabled={!link.trim() || isScraping}
+          activeOpacity={0.88}
+        >
+          {isScraping ? (
+            <ActivityIndicator size="small" color={BlurbColors.text} />
+          ) : (
+            <RefreshCw color={BlurbColors.text} size={15} />
+          )}
+        </TouchableOpacity>
+      ),
+      footer: isScraping ? (
+        <View style={styles.scrapingIndicator}>
+          <Text style={styles.scrapingText}>Fetching metadata...</Text>
+        </View>
+      ) : null,
+    },
+    {
+      key: 'title',
+      label: 'Title',
+      headerRight: (
+        <Text style={styles.counterText}>
+          {title.length}/{MAX_TITLE_LENGTH}
+        </Text>
+      ),
+      value: title,
+      onChange: setTitle,
+      placeholder: 'Entry title',
+      maxLength: MAX_TITLE_LENGTH,
+      autoCapitalize: 'words',
+      autoCorrect: false,
+    },
+    {
+      key: 'subtitle',
+      label: 'Subtitle (optional)',
+      headerRight: (
+        <Text style={styles.counterText}>
+          {subtitle.length}/{MAX_SUBTITLE_LENGTH}
+        </Text>
+      ),
+      value: subtitle,
+      onChange: setSubtitle,
+      placeholder: 'Subtitle or handle',
+      maxLength: MAX_SUBTITLE_LENGTH,
+      autoCapitalize: 'none',
+      autoCorrect: false,
+    },
+  ];
+
   return (
     <Animated.View style={[styles.drawerContainer, drawerStyle]}>
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-      <Animated.View style={[styles.pullIndicator, { paddingTop: insets.top + 8 }, indicatorOpacity, indicatorTranslateY]} pointerEvents="none">
-        <View style={styles.indicatorLine} />
-        <Animated.View style={[styles.indicatorText, textOpacity]}>
-          <Text style={styles.indicatorTextContent}>D I S M I S S</Text>
-        </Animated.View>
-      </Animated.View>
       <GestureDetector gesture={pullDownGesture}>
         <ScrollView
           style={styles.scrollView}
@@ -565,129 +594,71 @@ export function AddEntry() {
         >
         <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Text style={styles.backButtonText}>Cancel</Text>
+            <ChevronLeft color={BlurbColors.text} size={18} />
+            <Text style={styles.backButtonText}>Back</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>
-            {isEditing ? 'Edit Entry' : 'New Entry'}
+            {isEditing ? 'Edit blurb' : 'New blurb'}
           </Text>
-          <View style={styles.backButton} />
+          <View style={styles.headerPlaceholder} />
         </View>
 
         <View style={styles.form}>
           <View style={styles.field}>
-            <Text style={styles.label}>URL</Text>
-            <View style={styles.urlInputContainer}>
-              <TextInput
-                style={[
-                  styles.input,
-                  styles.urlInput,
-                  isScraping && styles.inputDisabled,
-                ]}
-                value={link}
-                onChangeText={(text) => setLink(text.slice(0, MAX_URL_LENGTH))}
-                placeholder="https://..."
-                placeholderTextColor={BlurbColors.textTertiary}
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="url"
-                editable={!isScraping}
-                maxLength={MAX_URL_LENGTH}
-              />
+            <View style={styles.iconSection}>
               <TouchableOpacity
-                style={[styles.syncButton, isScraping && styles.syncButtonDisabled]}
-                onPress={handleSyncMetadata}
-                disabled={!link.trim() || isScraping}
+                style={styles.iconPreviewButton}
+                onPress={() => setShowIconPicker(true)}
+                activeOpacity={0.88}
               >
-                {isScraping ? (
-                  <ActivityIndicator size="small" color={BlurbColors.text} />
+                {iconUri ? (
+                  <ThemedIcon uri={iconUri} iconType={iconType} size={40} />
                 ) : (
-                  <Text style={styles.syncButtonText}>↻</Text>
+                  <ThemedIcon uri="Link" iconType="lucide" size={40} iconSize={20} />
                 )}
               </TouchableOpacity>
-            </View>
-            {isScraping && (
-              <View style={styles.scrapingIndicator}>
-                <Text style={styles.scrapingText}>Fetching metadata...</Text>
-              </View>
-            )}
-          </View>
-
-          <View style={styles.field}>
-            <View style={styles.labelRow}>
-              <Text style={styles.label}>Title</Text>
-              <Text style={styles.charCount}>{title.length}/{MAX_TITLE_LENGTH}</Text>
-            </View>
-            <TextInput
-              style={styles.input}
-              value={title}
-              onChangeText={(text) => setTitle(text.slice(0, MAX_TITLE_LENGTH))}
-              placeholder="Entry title"
-              placeholderTextColor={BlurbColors.textTertiary}
-              autoCapitalize="words"
-              maxLength={MAX_TITLE_LENGTH}
-            />
-          </View>
-
-          <View style={styles.field}>
-            <View style={styles.labelRow}>
-              <Text style={styles.label}>Subtitle (optional)</Text>
-              <Text style={styles.charCount}>{subtitle.length}/{MAX_SUBTITLE_LENGTH}</Text>
-            </View>
-            <TextInput
-              style={styles.input}
-              value={subtitle}
-              onChangeText={(text) => setSubtitle(text.slice(0, MAX_SUBTITLE_LENGTH))}
-              placeholder="Subtitle or handle"
-              placeholderTextColor={BlurbColors.textTertiary}
-              autoCapitalize="none"
-              maxLength={MAX_SUBTITLE_LENGTH}
-            />
-          </View>
-
-          <View style={styles.field}>
-            <Text style={styles.label}>Icon</Text>
-            <View style={styles.iconSection}>
-              {iconUri && (
-                <ThemedIcon uri={iconUri} iconType={iconType} size={64} />
-              )}
-              {!iconUri && (
-                <ThemedIcon uri="Link" iconType="lucide" size={64} iconSize={28} />
-              )}
-              <View style={styles.iconButtonsColumn}>
-                <TouchableOpacity
-                  style={styles.iconButton}
-                  onPress={handlePickImage}
-                >
-                  <Text style={styles.iconButtonText}>
-                    Upload Image
-                  </Text>
-                </TouchableOpacity>
+              <View style={styles.iconActionsRow}>
                 <TouchableOpacity
                   style={styles.iconButton}
                   onPress={() => setShowIconPicker(true)}
                 >
+                  <Shapes color={BlurbColors.text} size={15} />
                   <Text style={styles.iconButtonText}>
-                    Pick Icon
+                    Select icon
                   </Text>
                 </TouchableOpacity>
-                {iconUri && (
-                  <TouchableOpacity
-                    style={styles.iconButton}
-                    onPress={() => {
-                      setIconUri(undefined);
-                      setIconType('image');
-                    }}
-                  >
-                    <Text style={[styles.iconButtonText, styles.removeButtonText]}>
-                      Remove
-                    </Text>
-                  </TouchableOpacity>
-                )}
+                <TouchableOpacity
+                  style={styles.iconButton}
+                  onPress={handlePickImage}
+                >
+                  <ImageIcon color={BlurbColors.text} size={15} />
+                  <Text style={styles.iconButtonText}>
+                    Upload image
+                  </Text>
+                </TouchableOpacity>
               </View>
+              {iconUri && (
+                <TouchableOpacity
+                  style={styles.iconButton}
+                  onPress={() => {
+                    setIconUri(undefined);
+                    setIconType('image');
+                  }}
+                >
+                  <Text style={[styles.iconButtonText, styles.removeButtonText]}>
+                    Remove
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
-        </View>
 
+          <BlurbFormFields
+            showIcon={false}
+            fields={addEntryFields}
+            containerStyle={styles.formCard}
+          />
+        </View>
         {isEditing ? (
           <>
             <TouchableOpacity
@@ -729,6 +700,8 @@ export function AddEntry() {
       visible={showIconPicker}
       onClose={() => setShowIconPicker(false)}
       onSelectIcon={handleSelectLucideIcon}
+      topActionLabel="Upload image"
+      onPressTopAction={handlePickImage}
     />
     </Animated.View>
   );
@@ -738,12 +711,15 @@ const styles = StyleSheet.create({
   drawerContainer: {
     flex: 1,
     backgroundColor: BlurbColors.backgroundElevated,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    overflow: 'hidden',
   },
   container: {
     flex: 1,
-    backgroundColor: BlurbColors.backgroundElevated,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    backgroundColor: '#0C0C0E',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
     overflow: 'hidden',
   },
   scrollView: {
@@ -756,27 +732,57 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: 18,
     paddingVertical: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: BlurbColors.border,
+    borderBottomColor: 'rgba(255,255,255,0.08)',
   },
   backButton: {
-    minWidth: 60,
+    minWidth: 76,
+    height: 42,
+    borderRadius: 21,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
   },
   backButtonText: {
     ...BlurbTypography.body,
     color: BlurbColors.text,
+    fontWeight: '600',
   },
   headerTitle: {
-    ...BlurbTypography.title,
+    fontSize: 22,
+    lineHeight: 26,
+    fontWeight: '700',
     color: BlurbColors.text,
+    fontFamily: 'Manrope',
+  },
+  headerPlaceholder: {
+    width: 76,
+    height: 42,
   },
   form: {
-    padding: 16,
+    padding: 18,
+    gap: 16,
+  },
+  formCard: {
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: 26,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    padding: 18,
+    gap: 18,
   },
   field: {
-    marginBottom: 24,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: 26,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    padding: 18,
   },
   labelRow: {
     flexDirection: 'row',
@@ -785,51 +791,50 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   label: {
-    ...BlurbTypography.body,
-    color: BlurbColors.textSecondary,
+    ...BlurbTypography.small,
+    color: 'rgba(255,255,255,0.54)',
+    textTransform: 'uppercase',
+    letterSpacing: 1.1,
   },
-  charCount: {
+  counterText: {
     ...BlurbTypography.small,
     color: BlurbColors.textTertiary,
     fontSize: 12,
   },
   urlInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    position: 'relative',
+    justifyContent: 'center',
   },
   input: {
     ...BlurbTypography.entryTitle,
     color: BlurbColors.text,
-    backgroundColor: BlurbColors.backgroundElevated,
-    borderRadius: 8,
-    padding: 12,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
     borderWidth: 1,
-    borderColor: BlurbColors.border,
+    borderColor: 'rgba(255,255,255,0.08)',
   },
   urlInput: {
-    flex: 1,
+    paddingRight: 56,
   },
   inputDisabled: {
     opacity: 0.6,
   },
   syncButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 8,
-    backgroundColor: BlurbColors.backgroundElevated,
+    position: 'absolute',
+    right: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.06)',
     borderWidth: 1,
-    borderColor: BlurbColors.border,
+    borderColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   syncButtonDisabled: {
     opacity: 0.5,
-  },
-  syncButtonText: {
-    fontSize: 20,
-    color: BlurbColors.text,
-    fontWeight: '600',
   },
   scrapingIndicator: {
     flexDirection: 'row',
@@ -844,11 +849,26 @@ const styles = StyleSheet.create({
   iconSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    justifyContent: 'flex-start',
+    gap: 10,
   },
-  iconButtonsColumn: {
+  iconPreviewButton: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  iconActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    gap: 10,
     flex: 1,
-    gap: 8,
+    flexWrap: 'wrap',
   },
   iconPlaceholder: {
     justifyContent: 'center',
@@ -861,93 +881,86 @@ const styles = StyleSheet.create({
     color: BlurbColors.textTertiary,
   },
   iconButton: {
+    minHeight: 36,
     paddingVertical: 8,
-    paddingHorizontal: 16,
-    backgroundColor: BlurbColors.backgroundElevated,
-    borderRadius: 8,
+    paddingHorizontal: 12,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: BlurbColors.border,
+    borderColor: 'rgba(255,255,255,0.08)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    justifyContent: 'center',
   },
   iconButtonText: {
     ...BlurbTypography.body,
     color: BlurbColors.text,
+    fontWeight: '500',
   },
   removeButtonText: {
-    color: BlurbColors.textSecondary,
+    color: '#FF8B8B',
   },
   previewButton: {
-    backgroundColor: BlurbColors.text,
-    marginHorizontal: 16,
-    marginTop: 16,
-    paddingVertical: 16,
-    borderRadius: 8,
+    backgroundColor: '#F4F4F1',
+    marginHorizontal: 18,
+    marginTop: 12,
+    minHeight: 54,
+    borderRadius: 18,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   previewButtonDisabled: {
     opacity: 0.5,
   },
+  trailingButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  trailingButtonDisabled: {
+    opacity: 0.7,
+  },
   previewButtonText: {
     ...BlurbTypography.entryTitle,
-    color: BlurbColors.background,
+    color: '#0C0C0E',
+    fontWeight: '700',
   },
   saveButton: {
-    backgroundColor: BlurbColors.text,
-    marginHorizontal: 16,
-    marginTop: 16,
-    paddingVertical: 16,
-    borderRadius: 8,
+    backgroundColor: '#F4F4F1',
+    marginHorizontal: 18,
+    marginTop: 12,
+    minHeight: 54,
+    borderRadius: 18,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   saveButtonDisabled: {
     opacity: 0.5,
   },
   saveButtonText: {
     ...BlurbTypography.entryTitle,
-    color: BlurbColors.background,
+    color: '#0C0C0E',
+    fontWeight: '700',
   },
   deleteButton: {
     backgroundColor: 'transparent',
-    marginHorizontal: 16,
-    marginTop: 12,
-    paddingVertical: 16,
-    borderRadius: 8,
+    marginHorizontal: 18,
+    marginTop: 10,
+    minHeight: 54,
+    borderRadius: 18,
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
-    borderColor: BlurbColors.border,
+    borderColor: 'rgba(255,255,255,0.08)',
   },
   deleteButtonText: {
     ...BlurbTypography.entryTitle,
     color: '#FF3B30',
-  },
-  pullIndicator: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 100,
-  },
-  indicatorLine: {
-    width: 40,
-    height: 3,
-    backgroundColor: BlurbColors.textTertiary,
-    borderRadius: 2,
-    marginBottom: 12,
-  },
-  indicatorText: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  indicatorTextContent: {
-    fontSize: 11,
-    fontWeight: '600',
-    letterSpacing: 2,
-    color: BlurbColors.textTertiary,
-    fontFamily: Platform.select({
-      ios: 'SF Pro Text',
-      android: 'sans-serif-medium',
-      default: 'system-ui',
-    }),
   },
 });
