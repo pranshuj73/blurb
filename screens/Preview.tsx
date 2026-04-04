@@ -1,16 +1,14 @@
 import { ThemedIcon } from '@/components/entry/themed-icon';
 import { useAppAlert } from '@/components/ui/app-alert-provider';
-import { Heading } from '@/components/ui/heading';
 import { Label } from '@/components/ui/label';
 import { Subheading } from '@/components/ui/subheading';
-import { QR_CONFIG } from '@/lib/qr';
 import { Entry, ScannedEntry, storage } from '@/lib/storage';
 import { getAccentColorFromFavicon } from '@/lib/utils/favicon-color';
 import { BlurbColors } from '@/theme/colors';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { ChevronLeft, ExternalLink, Pencil } from 'lucide-react-native';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Linking, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Linking, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,6 +18,7 @@ export function Preview() {
   const { showAlert } = useAppAlert();
   const params = useLocalSearchParams<{ entry: string; isNew: string; editableTitle?: string }>();
   const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
 
   const screenOpacity = useSharedValue(0);
   const screenScale = useSharedValue(0.95);
@@ -123,7 +122,7 @@ export function Preview() {
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>Error</Text>
           </View>
-          <View style={[styles.headerSide, styles.headerSideRight]}>
+          <View style={styles.headerRightSlot}>
             <View style={styles.headerSidePlaceholder} />
           </View>
         </View>
@@ -180,7 +179,8 @@ export function Preview() {
     });
   };
 
-  const qrSize = QR_CONFIG.getSize();
+  const previewInnerWidth = screenWidth - 96;
+  const qrSize = Math.round(Math.min(Math.max(previewInnerWidth, 280), 360) * 0.82);
 
   return (
     <Animated.View style={[styles.container, screenStyle]}>
@@ -195,7 +195,7 @@ export function Preview() {
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>Preview</Text>
           </View>
-          <View style={[styles.headerSide, styles.headerSideRight]}>
+          <View style={styles.headerRightSlot}>
             {!isNew ? (
               <TouchableOpacity onPress={handleEdit} style={styles.editButton} activeOpacity={0.85}>
                 <Pencil color={BlurbColors.text} size={18} />
@@ -209,9 +209,9 @@ export function Preview() {
         <View style={styles.preview}>
           <View style={styles.previewHeader}>
             {entry.iconUri ? (
-              <ThemedIcon uri={entry.iconUri} iconType={entry.iconType} size={52} />
+              <ThemedIcon uri={entry.iconUri} iconType={entry.iconType} size={44} />
             ) : (
-              <ThemedIcon uri="Link" iconType="lucide" size={52} />
+              <ThemedIcon uri="Link" iconType="lucide" size={44} />
             )}
             <View style={styles.titleSection}>
               {isTitleEditable ? (
@@ -224,15 +224,11 @@ export function Preview() {
                   maxLength={100}
                 />
               ) : (
-                <Heading size="md" weight="300">
-                  {entry.title}
-                </Heading>
+                <Text style={styles.titleText}>{entry.title}</Text>
               )}
               {entry.subtitle ? <Subheading size="md">{entry.subtitle}</Subheading> : null}
             </View>
           </View>
-
-          <View style={styles.qrSpacer} />
 
           <View style={styles.qrWrapper}>
             <View style={styles.qrContainer}>
@@ -305,6 +301,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-end',
   },
+  headerRightSlot: {
+    width: 96,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
   headerCenter: {
     flex: 1,
     alignItems: 'center',
@@ -367,14 +368,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: BlurbColors.border,
   },
-  qrSpacer: {
-    height: 32,
-  },
   previewHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'center',
-    marginBottom: 40,
+    marginBottom: 28,
     gap: 16,
   },
   titleSection: {
@@ -386,11 +384,11 @@ const styles = StyleSheet.create({
     width: '100%',
     fontSize: 26,
     lineHeight: 32,
-    fontWeight: '300',
+    fontWeight: '500',
     color: BlurbColors.text,
     fontFamily: Platform.select({
-      ios: 'SF Pro Display',
-      android: 'sans-serif-light',
+      ios: 'SF Pro Text',
+      android: 'sans-serif-medium',
       default: 'system-ui',
     }),
     borderBottomWidth: 1,
@@ -398,30 +396,39 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
     marginBottom: 6,
   },
-  qrWrapper: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 24,
-    paddingHorizontal: 8,
+  titleText: {
+    fontSize: 26,
+    lineHeight: 32,
+    fontWeight: '500',
+    color: BlurbColors.text,
+    fontFamily: Platform.select({
+      ios: 'SF Pro Text',
+      android: 'sans-serif-medium',
+      default: 'system-ui',
+    }),
   },
-  qrContainer: {
+  qrWrapper: {
+    width: '100%',
+    aspectRatio: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 32,
+    marginBottom: 28,
+    padding: 18,
     backgroundColor: BlurbColors.qrBackground,
-    borderRadius: 24,
+    borderRadius: 28,
     borderWidth: 1,
     borderColor: BlurbColors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 20,
-    elevation: 10,
+  },
+  qrContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 20,
   },
   divider: {
     height: 1,
     backgroundColor: BlurbColors.divider,
-    marginBottom: 24,
+    marginBottom: 28,
   },
   metadata: {
     gap: 6,
