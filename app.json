@@ -2,7 +2,7 @@
   "expo": {
     "name": "blurb",
     "slug": "blurb",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icons/ios/AppIcon~ios-marketing.png",
     "scheme": "blurb",
