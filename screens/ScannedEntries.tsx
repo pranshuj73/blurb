@@ -4,19 +4,31 @@ import { BlurbColors } from '@/theme/colors';
 import { BlurbTypography } from '@/theme/typography';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Camera, ChevronLeft, Users } from 'lucide-react-native';
-import React, { useCallback, useRef, useState } from 'react';
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import Animated, { Easing, FadeIn, FadeOut, SlideInDown, SlideOutDown } from 'react-native-reanimated';
+import React, { useCallback, useState } from 'react';
+import { Dimensions, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, {
+  Extrapolation,
+  interpolate,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const EXIT_DURATION_MS = 180;
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const DISMISS_THRESHOLD = 180;
 
 export function ScannedEntries() {
   const [entries, setEntries] = useState<ScannedEntry[]>([]);
-  const [isClosing, setIsClosing] = useState(false);
+  const [scrollOffset, setScrollOffset] = useState(0);
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const drawerOffset = useSharedValue(SCREEN_HEIGHT);
+  const pullDistance = useSharedValue(0);
+  const isPulling = useSharedValue(false);
 
   const loadEntries = useCallback(async () => {
     const scannedEntries = await storage.getAllScannedEntries();
@@ -25,25 +37,31 @@ export function ScannedEntries() {
 
   useFocusEffect(
     useCallback(() => {
-      loadEntries();
-      setIsClosing(false);
-
-      return () => {
-        if (closeTimeoutRef.current) {
-          clearTimeout(closeTimeoutRef.current);
-          closeTimeoutRef.current = null;
-        }
-      };
-    }, [loadEntries])
+      void loadEntries();
+      drawerOffset.value = withSpring(0, {
+        damping: 28,
+        stiffness: 300,
+        mass: 0.7,
+      });
+    }, [drawerOffset, loadEntries])
   );
 
-  const handleClose = useCallback(() => {
-    if (isClosing) return;
-    setIsClosing(true);
-    closeTimeoutRef.current = setTimeout(() => {
-      router.back();
-    }, EXIT_DURATION_MS);
-  }, [isClosing, router]);
+  const closeDrawer = useCallback(() => {
+    drawerOffset.value = withSpring(
+      SCREEN_HEIGHT,
+      {
+        damping: 30,
+        stiffness: 300,
+        mass: 0.7,
+      },
+      (finished) => {
+        'worklet';
+        if (finished) {
+          runOnJS(router.back)();
+        }
+      }
+    );
+  }, [drawerOffset, router]);
 
   const handleOpenScanner = useCallback(() => {
     router.push('/scan');
@@ -75,20 +93,77 @@ export function ScannedEntries() {
     [handlePress]
   );
 
+  const pullDownGesture = Gesture.Pan()
+    .activeOffsetY(10)
+    .failOffsetX([-30, 30])
+    .onStart(() => {
+      if (scrollOffset <= 0) {
+        isPulling.value = true;
+      }
+    })
+    .onChange((event) => {
+      if (scrollOffset <= 0 && event.translationY > 0) {
+        pullDistance.value = event.translationY;
+        drawerOffset.value = event.translationY;
+      } else {
+        pullDistance.value = 0;
+        isPulling.value = false;
+      }
+    })
+    .onEnd((event) => {
+      if (scrollOffset <= 0 && event.translationY > DISMISS_THRESHOLD) {
+        drawerOffset.value = withSpring(
+          SCREEN_HEIGHT,
+          {
+            damping: 30,
+            stiffness: 300,
+            mass: 0.7,
+          },
+          (finished) => {
+            'worklet';
+            if (finished) {
+              runOnJS(router.back)();
+            }
+          }
+        );
+        pullDistance.value = withSpring(0, { damping: 25, stiffness: 200 });
+      } else {
+        drawerOffset.value = withSpring(0, {
+          damping: 28,
+          stiffness: 300,
+          mass: 0.7,
+        });
+        pullDistance.value = withSpring(0, { damping: 20, stiffness: 180 });
+      }
+      isPulling.value = false;
+    });
+
+  const drawerStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      drawerOffset.value,
+      [0, SCREEN_HEIGHT],
+      [1, 0],
+      Extrapolation.CLAMP
+    );
+    const scale = interpolate(
+      drawerOffset.value,
+      [0, SCREEN_HEIGHT],
+      [1, 0.95],
+      Extrapolation.CLAMP
+    );
+    return {
+      transform: [{ translateY: drawerOffset.value }, { scale }],
+      opacity,
+    };
+  });
+
   return (
-    <View style={styles.container}>
-      {!isClosing && (
-        <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(140)} style={styles.backdrop} />
-      )}
-      {!isClosing && (
-        <Animated.View
-          entering={SlideInDown.duration(220).easing(Easing.out(Easing.cubic))}
-          exiting={SlideOutDown.duration(EXIT_DURATION_MS).easing(Easing.in(Easing.cubic))}
-          style={[styles.sheet, { paddingTop: 20, paddingBottom: insets.bottom + 24 }]}
-        >
+    <Animated.View style={[styles.container, drawerStyle]}>
+      <GestureDetector gesture={pullDownGesture}>
+        <View style={[styles.sheet, { paddingTop: 20, paddingBottom: insets.bottom + 24 }]}>
           <View style={styles.header}>
             <View style={styles.headerActions}>
-              <TouchableOpacity style={styles.backButton} onPress={handleClose} activeOpacity={0.85}>
+              <TouchableOpacity style={styles.backButton} onPress={closeDrawer} activeOpacity={0.85}>
                 <ChevronLeft color={BlurbColors.text} size={18} />
                 <Text style={styles.backButtonText}>Back</Text>
               </TouchableOpacity>
@@ -107,6 +182,10 @@ export function ScannedEntries() {
             data={entries}
             renderItem={renderItem}
             keyExtractor={(item) => `${item.link}-${item.scannedAt}`}
+            onScroll={(event) => {
+              setScrollOffset(event.nativeEvent.contentOffset.y);
+            }}
+            scrollEventThrottle={16}
             contentContainerStyle={entries.length === 0 ? styles.emptyList : styles.listContent}
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={
@@ -121,9 +200,9 @@ export function ScannedEntries() {
               </View>
             }
           />
-        </Animated.View>
-      )}
-    </View>
+        </View>
+      </GestureDetector>
+    </Animated.View>
   );
 }
 
@@ -131,10 +210,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'flex-end',
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.52)',
+    backgroundColor: 'transparent',
+    borderTopLeftRadius: 34,
+    borderTopRightRadius: 34,
+    overflow: 'hidden',
   },
   sheet: {
     minHeight: '78%',

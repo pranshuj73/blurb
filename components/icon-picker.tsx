@@ -10,6 +10,7 @@ import {
   Modal,
   StyleSheet,
   Dimensions,
+  PanResponder,
 } from 'react-native';
 import {
   Home,
@@ -83,10 +84,20 @@ import {
   ArrowUp,
   ArrowDown,
 } from 'lucide-react-native';
+import Animated, {
+  Extrapolation,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  interpolate,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const ICON_SIZE = 24;
 const ICON_COLOR = BlurbColors.text;
+const DISMISS_THRESHOLD = 120;
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // Popular icons catalog
 const ICON_CATALOG = [
@@ -178,7 +189,39 @@ export function IconPicker({
   onPressTopAction,
 }: IconPickerProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [scrollOffset, setScrollOffset] = useState(0);
   const insets = useSafeAreaInsets();
+  const drawerOffset = useSharedValue(SCREEN_HEIGHT);
+  const isPulling = useSharedValue(false);
+
+  const closePicker = React.useCallback(() => {
+    drawerOffset.value = withSpring(
+      SCREEN_HEIGHT,
+      {
+        damping: 30,
+        stiffness: 300,
+        mass: 0.7,
+      },
+      (finished) => {
+        'worklet';
+        if (finished) {
+          runOnJS(setSearchQuery)('');
+          runOnJS(onClose)();
+        }
+      }
+    );
+  }, [drawerOffset, onClose]);
+
+  React.useEffect(() => {
+    if (!visible) return;
+
+    drawerOffset.value = SCREEN_HEIGHT;
+    drawerOffset.value = withSpring(0, {
+      damping: 28,
+      stiffness: 300,
+      mass: 0.7,
+    });
+  }, [drawerOffset, visible]);
 
   const filteredIcons = useMemo(() => {
     if (!searchQuery.trim()) {
@@ -192,9 +235,66 @@ export function IconPicker({
 
   const handleSelectIcon = (iconName: string) => {
     onSelectIcon(iconName);
-    setSearchQuery('');
-    onClose();
+    closePicker();
   };
+
+  const drawerStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      drawerOffset.value,
+      [0, SCREEN_HEIGHT],
+      [1, 0],
+      Extrapolation.CLAMP
+    );
+    const scale = interpolate(
+      drawerOffset.value,
+      [0, SCREEN_HEIGHT],
+      [1, 0.95],
+      Extrapolation.CLAMP
+    );
+    return {
+      transform: [{ translateY: drawerOffset.value }, { scale }],
+      opacity,
+    };
+  });
+
+  const panResponder = React.useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponderCapture: (_, gestureState) => {
+          const isVerticalDrag = Math.abs(gestureState.dy) > Math.abs(gestureState.dx);
+          return scrollOffset <= 0 && gestureState.dy > 8 && isVerticalDrag;
+        },
+        onPanResponderGrant: () => {
+          isPulling.value = true;
+        },
+        onPanResponderMove: (_, gestureState) => {
+          if (gestureState.dy > 0) {
+            drawerOffset.value = gestureState.dy;
+          }
+        },
+        onPanResponderRelease: (_, gestureState) => {
+          if (gestureState.dy > DISMISS_THRESHOLD) {
+            closePicker();
+          } else {
+            drawerOffset.value = withSpring(0, {
+              damping: 28,
+              stiffness: 300,
+              mass: 0.7,
+            });
+          }
+          isPulling.value = false;
+        },
+        onPanResponderTerminate: () => {
+          drawerOffset.value = withSpring(0, {
+            damping: 28,
+            stiffness: 300,
+            mass: 0.7,
+          });
+          isPulling.value = false;
+        },
+      }),
+    [closePicker, drawerOffset, isPulling, scrollOffset]
+  );
 
   const renderIcon = ({ item }: { item: typeof ICON_CATALOG[0] }) => {
     const IconComponent = item.component;
@@ -214,63 +314,101 @@ export function IconPicker({
   return (
     <Modal
       visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
+      animationType="none"
+      presentationStyle="overFullScreen"
+      transparent
       onRequestClose={onClose}
     >
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Pick an Icon</Text>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Text style={styles.closeButtonText}>Done</Text>
-          </TouchableOpacity>
-        </View>
+      <Animated.View style={[styles.drawerContainer, drawerStyle]}>
+        <Animated.View
+          {...panResponder.panHandlers}
+          style={[styles.sheet, { paddingTop: insets.top + 10, paddingBottom: insets.bottom + 18 }]}
+        >
+              <View>
+                <View style={styles.handleWrap}>
+                  <View style={styles.handle} />
+                </View>
 
-        <View style={styles.searchContainer}>
-          <Search size={20} color={BlurbColors.textSecondary} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search icons..."
-            placeholderTextColor={BlurbColors.textTertiary}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <X size={20} color={BlurbColors.textSecondary} />
-            </TouchableOpacity>
-          )}
-        </View>
+                <View style={styles.header}>
+                  <Text style={styles.headerTitle}>Pick an Icon</Text>
+                  <TouchableOpacity onPress={closePicker} style={styles.closeButton}>
+                    <Text style={styles.closeButtonText}>Done</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
 
-        {topActionLabel && onPressTopAction ? (
-          <TouchableOpacity style={styles.topActionButton} onPress={onPressTopAction} activeOpacity={0.88}>
-            <Text style={styles.topActionButtonText}>{topActionLabel}</Text>
-          </TouchableOpacity>
-        ) : null}
+              <View style={styles.searchContainer}>
+                <Search size={20} color={BlurbColors.textSecondary} />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search icons..."
+                  placeholderTextColor={BlurbColors.textTertiary}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                {searchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => setSearchQuery('')}>
+                    <X size={20} color={BlurbColors.textSecondary} />
+                  </TouchableOpacity>
+                )}
+              </View>
 
-        <FlatList
-          data={filteredIcons}
-          renderItem={renderIcon}
-          keyExtractor={(item) => item.name}
-          numColumns={3}
-          contentContainerStyle={styles.iconGrid}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No icons found</Text>
-            </View>
-          }
-        />
-      </View>
+              {topActionLabel && onPressTopAction ? (
+                <TouchableOpacity style={styles.topActionButton} onPress={onPressTopAction} activeOpacity={0.88}>
+                  <Text style={styles.topActionButtonText}>{topActionLabel}</Text>
+                </TouchableOpacity>
+              ) : null}
+
+              <FlatList
+                data={filteredIcons}
+                renderItem={renderIcon}
+                keyExtractor={(item) => item.name}
+                numColumns={3}
+                onScroll={(event) => {
+                  setScrollOffset(event.nativeEvent.contentOffset.y);
+                }}
+                scrollEventThrottle={16}
+                contentContainerStyle={styles.iconGrid}
+                ListEmptyComponent={
+                  <View style={styles.emptyContainer}>
+                    <Text style={styles.emptyText}>No icons found</Text>
+                  </View>
+                }
+              />
+        </Animated.View>
+      </Animated.View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  drawerContainer: {
+    flex: 1,
+    backgroundColor: BlurbColors.backgroundElevated,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    overflow: 'hidden',
+  },
+  sheet: {
     flex: 1,
     backgroundColor: BlurbColors.background,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    overflow: 'hidden',
+  },
+  handleWrap: {
+    alignItems: 'center',
+    paddingBottom: 6,
+  },
+  handle: {
+    width: 42,
+    height: 4,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.18)',
   },
   header: {
     flexDirection: 'row',
